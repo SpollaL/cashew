@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func main() {
 	transactions, err := ParseRevolutTransactions(
@@ -11,15 +15,8 @@ func main() {
 		return
 	}
 	summaries := SummarizeTransactions(transactions)
-	for _, summary := range summaries {
-		fmt.Printf(
-			"%d-%02d: Income: %.2f, Expense: %.2f, Investment: %.2f, Net: %.2f\n",
-			summary.Year,
-			summary.Month,
-			summary.TotalIncome,
-			summary.TotalExpense,
-			summary.TotalInvestment,
-			summary.NetAmount,
-		)
+	p := tea.NewProgram(model{monthlySummaries: summaries})
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Error running program: %v\n", err)
 	}
 }
