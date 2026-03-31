@@ -1,0 +1,16 @@
+[[rules]]
+pattern = "Al Pocket"
+type = "transfer"
+
+[[rules]]
+pattern = "Retirada del Pocket"
+type = "transfer"
+
+[[rules]]
+pattern = "To Robo portfolio"
+type = "investment"
+
+[[rules]]
+pattern = "Pago de LUCA SPOLLADORE"
+type = "income"
+

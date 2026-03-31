@@ -37,7 +37,7 @@ func ParseRevolutTransactions(filePath string) ([]Transaction, error) {
 			return nil, err
 		}
 		transaction := Transaction{
-			Type:        row[0],
+			Type:        TransactionType(row[0]),
 			Date:        date,
 			Description: row[4],
 			Amount:      amount,

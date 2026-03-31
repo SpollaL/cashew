@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -28,12 +27,19 @@ func SummarizeTransactions(transactions []Transaction) []MonthlySummary {
 		totalExpense := 0.0
 		totalInvestment := 0.0
 		for _, transaction := range group {
-			if transaction.Amount > 0 {
+			switch transaction.Type {
+			case TypeTransfer:
+				continue
+			case TypeIncome:
 				totalIncome += transaction.Amount
-			} else if strings.Contains(transaction.Description, "portfolio") {
+			case TypeInvestment:
 				totalInvestment += -transaction.Amount
-			} else if transaction.Amount < 0 {
+			case TypeExpense:
 				totalExpense += -transaction.Amount
+				// We assume that expenses are negative amounts, so we negate them to get the total expense.
+			}
+			if transaction.Fee > 0 {
+				totalExpense += transaction.Fee
 			}
 		}
 		monthlySummary := MonthlySummary{
