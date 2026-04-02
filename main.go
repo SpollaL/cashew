@@ -14,18 +14,20 @@ func main() {
 		fmt.Printf("Error parsing transactions: %v\n", err)
 		return
 	}
-	rules, err := LoadRules("rules.toml")
+	typeRules, categoryRules, categories, err := LoadRules("rules.toml")
 	if err != nil {
 		fmt.Printf("Error loading rules: %v\n", err)
 		return
 	}
-	transactions = ApplyRules(transactions, rules)
+	transactions = ApplyTypeRules(transactions, typeRules)
+	transactions = ApplyCategoryRules(transactions, categoryRules)
 	summaries := SummarizeTransactions(transactions)
 	p := tea.NewProgram(
 		model{
 			monthlySummaries: summaries,
 			transactions:      transactions,
 			activeView:       ViewSummary,
+			categories:       categories,
 		},
 	)
 	if _, err := p.Run(); err != nil {

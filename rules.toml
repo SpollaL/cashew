@@ -1,16 +1,19 @@
-[[rules]]
+[categories]
+buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Investments", "Other"]
+
+[[type_rules]]
 pattern = "Al Pocket"
 type = "transfer"
 
-[[rules]]
+[[type_rules]]
 pattern = "Retirada del Pocket"
 type = "transfer"
 
-[[rules]]
+[[type_rules]]
 pattern = "To Robo portfolio"
 type = "investment"
 
-[[rules]]
+[[type_rules]]
 pattern = "Pago de LUCA SPOLLADORE"
 type = "income"
 

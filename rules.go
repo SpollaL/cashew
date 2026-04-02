@@ -7,15 +7,24 @@ import (
 )
 
 type ruleConfig struct {
-	Rules []Rule `toml:"rules"`
+	Categories struct {
+		Buckets []string `toml:"buckets"`
+	} `toml:"categories"`
+	TypeRules     []TypeRule     `toml:"type_rules"`
+	CategoryRules []CategoryRule `toml:"category_rules"`
 }
 
-type Rule struct {
+type TypeRule struct {
 	Pattern string
 	Type    TransactionType
 }
 
-func ApplyRules(transactions []Transaction, rules []Rule) []Transaction {
+type CategoryRule struct {
+	Pattern  string
+	Category string
+}
+
+func ApplyTypeRules(transactions []Transaction, rules []TypeRule) []Transaction {
 	for i := range transactions {
 		rulesApplied := false
 		for _, rule := range rules {
@@ -36,11 +45,28 @@ func ApplyRules(transactions []Transaction, rules []Rule) []Transaction {
 	return transactions
 }
 
-func LoadRules(filePath string) ([]Rule, error) {
+func ApplyCategoryRules(transactions []Transaction, rules []CategoryRule) []Transaction {
+	for i := range transactions {
+		rulesApplied := false
+		for _, rule := range rules {
+			if strings.Contains(transactions[i].Description, rule.Pattern) {
+				transactions[i].Category = rule.Category
+				rulesApplied = true
+				break
+			}
+		}
+		if !rulesApplied {
+			transactions[i].Category = CategoryUncategorized 
+		}
+	}
+	return transactions
+}
+
+func LoadRules(filePath string) ([]TypeRule, []CategoryRule, []string, error) {
 	var config ruleConfig
 	_, err := toml.DecodeFile(filePath, &config)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return config.Rules, nil
+	return config.TypeRules, config.CategoryRules, config.Categories.Buckets, nil
 }
