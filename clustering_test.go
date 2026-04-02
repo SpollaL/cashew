@@ -90,3 +90,23 @@ func TestClusterDescriptionsMinThreshold(t *testing.T) {
 		t.Errorf("Expected 1 clusters, got %d", len(results))
 	}
 }
+
+func TestClusterLabel(t *testing.T) {
+	cluster := []string{
+		"Mercadona",
+		"Mercadona Supermercado",
+		"Mercadona S.A.",
+	}
+	label := clusterLabel(cluster)
+	if label != "Mercadona" {
+		t.Errorf("Expected label 'Mercadona', got '%s'", label)
+	}
+}
+
+func TestClusterLabelEmpty(t *testing.T) {
+	cluster := []string{}
+	label := clusterLabel(cluster)
+	if label != "" {
+		t.Errorf("Expected label '', got '%s'", label)
+	}
+}

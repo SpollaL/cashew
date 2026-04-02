@@ -60,3 +60,16 @@ func prefixSimilarity(a, b string) float64 {
 	similarity := float64(matches) / float64(minLen)
 	return similarity
 }
+
+func clusterLabel(cluster []string) string {
+	if len(cluster) == 0 {
+		return ""
+	}
+	label := cluster[0]
+	for _, candidate := range cluster {
+		if len(candidate) < len(label) {
+			label = candidate
+		}
+	}
+	return label
+}
