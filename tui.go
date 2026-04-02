@@ -10,6 +10,7 @@ import (
 type View string
 
 const (
+	ViewReview       View = "review"
 	ViewSummary      View = "summary"
 	ViewTransactions View = "transactions"
 )
@@ -18,6 +19,8 @@ type model struct {
 	monthlySummaries []MonthlySummary
 	transactions     []Transaction
 	categories       []string
+	reviewQueue      []ReviewItem
+	reviewCursor     int
 	activeView       View
 	offset           int
 	height           int
@@ -41,10 +44,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if msg.String() == "up" || msg.String() == "k" {
-			m.offset = max(0, m.offset-1)
+			switch m.activeView {
+			case ViewReview:
+				m.reviewCursor = max(0, m.reviewCursor-1)
+			case ViewTransactions:
+				m.offset = max(0, m.offset-1)
+			}
 		}
 		if msg.String() == "down" || msg.String() == "j" {
-			m.offset = min(max(0, len(m.transactions)-m.height), m.offset+1)
+			switch m.activeView {
+			case ViewReview:
+	  		m.reviewCursor = min(len(m.reviewQueue)-1, m.reviewCursor+1)
+		case ViewTransactions:
+				m.offset = min(max(0, len(m.transactions)-(m.height-3)), m.offset+1)
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -61,6 +74,8 @@ func (m model) View() string {
 		return m.renderSummary()
 	case ViewTransactions:
 		return m.renderTransactions()
+	case ViewReview:
+		return m.renderReview()
 	}
 	return "Unknown view"
 }
@@ -87,7 +102,7 @@ func (m model) renderSummary() string {
 func (m model) renderTransactions() string {
 	var result strings.Builder
 	result.WriteString("Transactions:\n")
-	for _, transaction := range m.transactions[m.offset:min(m.offset+m.height, len(m.transactions))] {
+	for _, transaction := range m.transactions[m.offset:min(m.offset+m.height-3, len(m.transactions))] {
 		row := fmt.Sprintf(
 			"%s: %s %.2f %s\n",
 			transaction.Date.Format("2006-01-02"),
@@ -98,5 +113,21 @@ func (m model) renderTransactions() string {
 		result.WriteString(row)
 	}
 	result.WriteString("\nPress 's' to view summary, 'q' to quit.")
+	return result.String()
+}
+
+func (m model) renderReview() string {
+	var result strings.Builder
+	result.WriteString("Review Queue:\n")
+	for i, item := range m.reviewQueue[m.reviewCursor:min(m.reviewCursor+m.height-3, len(m.reviewQueue))] {
+		if i == 0 {
+			result.WriteString("> ")
+		} else {
+			result.WriteString("  ")
+		}
+		row := fmt.Sprintf("%s\n", item.label)
+		result.WriteString(row)
+	}
+	result.WriteString("\nPress 's' to view summary, 't' to view transactions, 'q' to quit.")
 	return result.String()
 }

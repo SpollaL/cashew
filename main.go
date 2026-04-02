@@ -21,13 +21,20 @@ func main() {
 	}
 	transactions = ApplyTypeRules(transactions, typeRules)
 	transactions = ApplyCategoryRules(transactions, categoryRules)
+	reviewItems := BuildReviewQueue(transactions)
+	activeView := ViewSummary
+	if len(reviewItems) > 0 {
+		activeView = ViewReview
+	}
 	summaries := SummarizeTransactions(transactions)
 	p := tea.NewProgram(
 		model{
 			monthlySummaries: summaries,
-			transactions:      transactions,
-			activeView:       ViewSummary,
+			transactions:     transactions,
+			activeView:       activeView,
 			categories:       categories,
+			reviewQueue:      reviewItems,
+			height:           20,
 		},
 	)
 	if _, err := p.Run(); err != nil {
