@@ -6,6 +6,9 @@ type ReviewItem struct {
 }
 
 func BuildReviewQueue(transactions []Transaction) []ReviewItem {
+	if len(transactions) == 0 {
+		return []ReviewItem{}
+	}
 	uniqueDescriptions := make(map[string]string)
 	for _, t := range transactions {
 		uniqueDescriptions[t.Description] = t.Category
