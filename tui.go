@@ -17,6 +17,7 @@ const (
 type model struct {
 	monthlySummaries []MonthlySummary
 	transactions     []Transaction
+	categories       []string
 	activeView       View
 	offset           int
 	height           int

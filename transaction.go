@@ -11,6 +11,8 @@ const (
 	TypeTransfer	 TransactionType = "transfer"
 )
 
+const CategoryUncategorized = "Other"
+
 type Transaction struct {
 	Date        time.Time
 	Description string
