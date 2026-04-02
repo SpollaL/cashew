@@ -21,7 +21,13 @@ func main() {
 	}
 	transactions = ApplyRules(transactions, rules)
 	summaries := SummarizeTransactions(transactions)
-	p := tea.NewProgram(model{monthlySummaries: summaries})
+	p := tea.NewProgram(
+		model{
+			monthlySummaries: summaries,
+			transactions:      transactions,
+			activeView:       ViewSummary,
+		},
+	)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)
 	}
