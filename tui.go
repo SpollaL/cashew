@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type View string
@@ -18,10 +19,12 @@ const (
 type model struct {
 	monthlySummaries []MonthlySummary
 	transactions     []Transaction
+	activeView       View
 	categories       []string
 	reviewQueue      []ReviewItem
 	reviewCursor     int
-	activeView       View
+	pickingCategory  bool
+	categoryCursor   int
 	offset           int
 	height           int
 	err              error
@@ -46,7 +49,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "up" || msg.String() == "k" {
 			switch m.activeView {
 			case ViewReview:
-				m.reviewCursor = max(0, m.reviewCursor-1)
+				if m.pickingCategory {
+					m.categoryCursor = max(0, m.categoryCursor-1)
+				} else {
+					m.reviewCursor = max(0, m.reviewCursor-1)
+				}
 			case ViewTransactions:
 				m.offset = max(0, m.offset-1)
 			}
@@ -54,9 +61,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "down" || msg.String() == "j" {
 			switch m.activeView {
 			case ViewReview:
-	  		m.reviewCursor = min(len(m.reviewQueue)-1, m.reviewCursor+1)
-		case ViewTransactions:
+				if m.pickingCategory {
+					m.categoryCursor = min(len(m.categories)-1, m.categoryCursor+1)
+				} else {
+					m.reviewCursor = min(len(m.reviewQueue)-1, m.reviewCursor+1)
+				}
+			case ViewTransactions:
 				m.offset = min(max(0, len(m.transactions)-(m.height-3)), m.offset+1)
+			}
+		}
+		if msg.String() == "enter" {
+			if !m.pickingCategory && m.activeView == ViewReview {
+				m.pickingCategory = true
+				m.categoryCursor = 0
+			} else if m.pickingCategory && m.activeView == ViewReview {
+				item := m.reviewQueue[m.reviewCursor]
+				err := saveCategoryRule("rules.toml", item.label, m.categories[m.categoryCursor])
+				if err != nil {
+					m.err = fmt.Errorf("failed to save category rule: %w", err)
+				}
+				m.reviewQueue = append(m.reviewQueue[:m.reviewCursor], m.reviewQueue[m.reviewCursor+1:]...)
+				m.reviewCursor = max(0, m.reviewCursor-1)
+				m.pickingCategory = false
+			}
+		}
+		if msg.String() == "esc" {
+			if m.pickingCategory && m.activeView == ViewReview {
+				m.pickingCategory = false
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -129,5 +160,19 @@ func (m model) renderReview() string {
 		result.WriteString(row)
 	}
 	result.WriteString("\nPress 's' to view summary, 't' to view transactions, 'q' to quit.")
-	return result.String()
+	var categoryOptions strings.Builder
+	if m.pickingCategory {
+		categoryOptions.WriteString("\nSelect category:\n")
+		for i, category := range m.categories {
+			if i == m.categoryCursor {
+				categoryOptions.WriteString("> ")
+			} else {
+				categoryOptions.WriteString("  ")
+			}
+			row := fmt.Sprintf("%s\n", category)
+			categoryOptions.WriteString(row)
+		}
+	}
+	view := lipgloss.JoinHorizontal(lipgloss.Top, result.String(), categoryOptions.String())
+	return view
 }

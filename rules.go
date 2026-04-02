@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -56,7 +58,7 @@ func ApplyCategoryRules(transactions []Transaction, rules []CategoryRule) []Tran
 			}
 		}
 		if !rulesApplied {
-			transactions[i].Category = CategoryUncategorized 
+			transactions[i].Category = CategoryUncategorized
 		}
 	}
 	return transactions
@@ -69,4 +71,16 @@ func LoadRules(filePath string) ([]TypeRule, []CategoryRule, []string, error) {
 		return nil, nil, nil, err
 	}
 	return config.TypeRules, config.CategoryRules, config.Categories.Buckets, nil
+}
+
+func saveCategoryRule(filePath string, pattern string, category string) error {
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	fmt.Fprintf(file, "\n[[category_rules]]\n")
+	fmt.Fprintf(file, "pattern = \"%s\"\n", pattern)
+	fmt.Fprintf(file, "category = \"%s\"\n", category)
+	return nil
 }
