@@ -8,7 +8,7 @@ import (
 
 func main() {
 	transactions, err := ParseRevolutTransactions(
-		"account-statement_2026-01-01_2026-03-30_es-es_49993c.csv",
+		"account-statement.csv",
 	)
 	if err != nil {
 		fmt.Printf("Error parsing transactions: %v\n", err)
@@ -21,16 +21,25 @@ func main() {
 	}
 	transactions = ApplyTypeRules(transactions, typeRules)
 	transactions = ApplyCategoryRules(transactions, categoryRules)
-	reviewItems := BuildReviewQueue(transactions)
+	uniqueDescriptions := GetUniqueDescriptions(transactions)
+	clusteredDescriptions := ClusterTransactions(uniqueDescriptions)
+	transactions = ApplyClusterInheritance(transactions, uniqueDescriptions, clusteredDescriptions)
+	reviewItems := BuildReviewQueue(uniqueDescriptions, clusteredDescriptions)
 	activeView := ViewSummary
 	if len(reviewItems) > 0 {
 		activeView = ViewReview
 	}
-	summaries := SummarizeTransactions(transactions)
+	monthlySummary := SummarizeTransactions(transactions)
+	expensesSummary := SummarizeExpenses(transactions, categories)
+	barData := createExpensesBarChartData(expensesSummary)
+	barChart := createExpensesBarChart(barData)
+	barChart.Draw()
 	p := tea.NewProgram(
 		model{
-			monthlySummaries: summaries,
+			monthlySummary:   monthlySummary,
+			expensesBarChart: barChart,
 			transactions:     transactions,
+			clusters:         clusteredDescriptions,
 			activeView:       activeView,
 			categories:       categories,
 			reviewQueue:      reviewItems,

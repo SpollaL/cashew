@@ -5,19 +5,7 @@ type ReviewItem struct {
 	descriptions []string
 }
 
-func BuildReviewQueue(transactions []Transaction) []ReviewItem {
-	if len(transactions) == 0 {
-		return []ReviewItem{}
-	}
-	uniqueDescriptions := make(map[string]string)
-	for _, t := range transactions {
-		uniqueDescriptions[t.Description] = t.Category
-	}
-	uniqueList := make([]string, 0, len(uniqueDescriptions))
-	for desc := range uniqueDescriptions {
-		uniqueList = append(uniqueList, desc)
-	}
-	clusters := ClusterDescriptions(uniqueList, 0.8)
+func BuildReviewQueue(uniqueDescriptions map[string]string, clusters [][]string) []ReviewItem {
 	uncategorizedClusters := make([][]string, 0)
 	for _, cluster := range clusters {
 		categorized := false

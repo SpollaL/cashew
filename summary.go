@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 )
@@ -57,4 +58,14 @@ func SummarizeTransactions(transactions []Transaction) []MonthlySummary {
 			(monthlySummaries[i].Year == monthlySummaries[j].Year && monthlySummaries[i].Month < monthlySummaries[j].Month)
 	})
 	return monthlySummaries
+}
+
+func SummarizeExpenses(transactions []Transaction, categories []string) map[string]float64 {
+	summary := make(map[string]float64, len(categories))
+	for _, t := range transactions {
+		if slices.Contains(categories, t.Category) && t.Type == TypeExpense {
+			summary[t.Category] += -t.Amount
+		}
+	}
+	return summary
 }
