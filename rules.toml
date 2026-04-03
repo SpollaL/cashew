@@ -1,5 +1,5 @@
 [categories]
-buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Investments", "Other"]
+buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Investments"]
 
 [[type_rules]]
 pattern = "Al Pocket"
@@ -17,3 +17,371 @@ type = "investment"
 pattern = "Pago de LUCA SPOLLADORE"
 type = "income"
 
+[[category_rules]]
+pattern = "El Montero De Cazorla"
+category = "Dining"
+
+[[category_rules]]
+pattern = "good good"
+category = "Dining"
+
+[[category_rules]]
+pattern = "TaxScouts Ges"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "Verace Pizza"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Recoletos Catering"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Pizza Hut"
+category = "Dining"
+
+[[category_rules]]
+pattern = "If7sports"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "The Motion School"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "Pez Tortilla"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Moby Dick"
+category = "Transport"
+
+
+[[category_rules]]
+pattern = "Vodafone"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "Cinesa"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Restauracja Przystań"
+category = "Dining"
+
+[[category_rules]]
+pattern = "The Irish Rover"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Pausa Para Cafe 2021"
+category = "Dining"
+
+[[category_rules]]
+pattern = "ATAC Roma"
+category = "Transport"
+
+[[category_rules]]
+pattern = "Farmacia Goya 19"
+category = "Health"
+
+[[category_rules]]
+pattern = "Maracca"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Madrid Delicia"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Restaurante La Concepción"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Decathlon"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "La Griferia"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Goya"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Starbucks"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Trainline"
+category = "Transport"
+
+[[category_rules]]
+pattern = "Selecta"
+category = "Dining"
+
+[[category_rules]]
+pattern = "New Gran Match"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Uber"
+category = "Transport"
+
+[[category_rules]]
+pattern = "Amazon"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Small Bridge"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Con Sazón"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Meson El Cochifrito E"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Transferencia a MARCO LEONARDI"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Primaprix"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "ClassPass"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "Carrefour"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "CAN PIZZA"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Santa Gloria"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Speed Park"
+category = "Transport"
+
+[[category_rules]]
+pattern = "Rocodromos"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "RUN RUN RUN"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Bizum payment to: Leonardo R."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: Egor S."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Basic-Fit"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "El Corte Inglés"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Tierra Gb52"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Bizum payment to: Dana Catalina V.B."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Osteria da Fortunata"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Strapizzami"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Bizum payment to: Jorge H.S."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Gracias Padre Restaurant"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Bizum payment to: Alejandro H.S."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Aldi"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "EMT Madrid"
+category = "Transport"
+
+[[category_rules]]
+pattern = "CTS Supermercati"
+category = "Transport"
+
+[[category_rules]]
+pattern = "Ibéricos Santa Engracia"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Tierra Burrito"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Boot.dev"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "Panaria"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Gelato"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Shave Barber"
+category = "Health"
+
+[[category_rules]]
+pattern = "Claude.ai"
+category = "Subscriptions"
+
+[[category_rules]]
+pattern = "Taquería Tiki Taco"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Yovas Pub"
+category = "Dining"
+
+[[category_rules]]
+pattern = "La Manduca De Juan"
+category = "Dining"
+
+[[category_rules]]
+pattern = "DIA"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "Mercato Centrale"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "superCOR"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "Transferencia a PAOLO ROMEO"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Kalúa Helado Artesanal"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Amadeus"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Origine"
+category = "Dining"
+
+[[category_rules]]
+pattern = "To Luca Spolladore"
+category = "Investments"
+
+[[category_rules]]
+pattern = "Consorcio Regional de Transportes de Madrid"
+category = "Transport"
+
+[[category_rules]]
+pattern = "Bellos Yr"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Transferencia a MATTIA SPOLLADORE"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Sanchez Romero"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "Gran Match"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Market Cafe"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Distrito 7"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Glovo"
+category = "Dining"
+
+[[category_rules]]
+pattern = "Mercadona"
+category = "Groceries"
+
+[[category_rules]]
+pattern = "Bizum payment to: Alessia C."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: LOAN.G"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: LOAN.G"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: LOAN.G"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: LOAN.G"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum purchase at: AMAZON"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: Moises O.C."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: LOAN.G"
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Bizum payment to: Moises O.C."
+category = "Entertainment"
+
+[[category_rules]]
+pattern = "Vinted"
+category = "Entertainment"

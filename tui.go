@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/NimbleMarkets/ntcharts/barchart"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -17,10 +18,12 @@ const (
 )
 
 type model struct {
-	monthlySummaries []MonthlySummary
+	monthlySummary   []MonthlySummary
+	expensesBarChart barchart.Model
 	transactions     []Transaction
 	activeView       View
 	categories       []string
+	clusters         [][]string
 	reviewQueue      []ReviewItem
 	reviewCursor     int
 	pickingCategory  bool
@@ -80,9 +83,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					m.err = fmt.Errorf("failed to save category rule: %w", err)
 				}
-				m.reviewQueue = append(m.reviewQueue[:m.reviewCursor], m.reviewQueue[m.reviewCursor+1:]...)
-				m.reviewCursor = max(0, m.reviewCursor-1)
 				m.pickingCategory = false
+				m.transactions, m.monthlySummary, m.reviewQueue, m.expensesBarChart, err = Refresh("rules.toml", m.transactions, m.clusters, m.categories)
+				if err != nil {
+					m.err = fmt.Errorf("failed to refresh data: %w", err)
+				}
+				if len(m.reviewQueue) == 0 {
+					m.reviewCursor = 0
+				} else {
+					m.reviewCursor = min(m.reviewCursor, len(m.reviewQueue)-1)
+				}
 			}
 		}
 		if msg.String() == "esc" {
@@ -114,7 +124,7 @@ func (m model) View() string {
 func (m model) renderSummary() string {
 	var result strings.Builder
 	result.WriteString("Monthly Summary:\n")
-	for _, monthlySummary := range m.monthlySummaries {
+	for _, monthlySummary := range m.monthlySummary {
 		row := fmt.Sprintf(
 			"%d %s: in %.2f, out %.2f, invested %.2f, net %.2f\n",
 			monthlySummary.Year,
@@ -126,6 +136,8 @@ func (m model) renderSummary() string {
 		)
 		result.WriteString(row)
 	}
+	charString := m.expensesBarChart.View()
+	result.WriteString(charString)
 	result.WriteString("\nPress 't' to view transactions, 'q' to quit.")
 	return result.String()
 }
