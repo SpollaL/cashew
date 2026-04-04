@@ -103,7 +103,9 @@ func (l Ledger) Aggregate(g domain.Granularity) []Summary {
 			s.Income += tx.Amount
 		case domain.Expense:
 			s.Expenses += tx.Amount
-			s.ByCategory[tx.Category] += tx.Amount
+			if tx.Category != "" {
+				s.ByCategory[tx.Category] += tx.Amount
+			}
 		case domain.Investment:
 			s.Investments += tx.Amount
 		}
