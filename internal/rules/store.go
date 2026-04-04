@@ -60,22 +60,22 @@ func Load(path string) ([]domain.Rule, []string, error) {
 	return rules, buckets, nil
 }
 
-// SaveCategoryRule appends a new category rule, skipping duplicates.
-// Rewrites the full file so there are no stale duplicate entries.
-func SaveCategoryRule(path, pattern, category string) error {
+// SaveRule saves a rule, updating an existing entry for the same pattern if one exists.
+func SaveRule(path string, r domain.Rule) error {
 	rulesList, buckets, err := Load(path)
 	if err != nil {
 		return err
 	}
 
-	patternLower := strings.ToLower(pattern)
-	for _, r := range rulesList {
-		if strings.ToLower(r.Pattern) == patternLower && r.Category == category {
-			return nil // already exists
+	patternLower := strings.ToLower(r.Pattern)
+	for i, existing := range rulesList {
+		if strings.ToLower(existing.Pattern) == patternLower {
+			rulesList[i] = r // update in place
+			return write(path, rulesList, buckets)
 		}
 	}
 
-	rulesList = append(rulesList, domain.Rule{Pattern: pattern, Category: category})
+	rulesList = append(rulesList, r)
 	return write(path, rulesList, buckets)
 }
 

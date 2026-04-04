@@ -1,11 +1,12 @@
 [categories]
-buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Investments", "Shopping", "Travel"]
-
-# ── Type overrides ────────────────────────────────────────────────────────────
-# These run before category rules. A rule can set both type and category.
+buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Shopping", "Travel", "Housing"]
 
 [[rules]]
 pattern = "Al Pocket"
+type = "transfer"
+
+[[rules]]
+pattern = "Para luca spolladore"
 type = "transfer"
 
 [[rules]]
@@ -15,18 +16,18 @@ type = "transfer"
 [[rules]]
 pattern = "To Robo portfolio"
 type = "investment"
-category = "Investments"
 
 [[rules]]
 pattern = "To Luca Spolladore"
 type = "investment"
-category = "Investments"
 
 [[rules]]
 pattern = "Pago de LUCA SPOLLADORE"
-type = "income"
+type = "transfer"
 
-# ── Groceries ─────────────────────────────────────────────────────────────────
+[[rules]]
+pattern = "Alquiler"
+category = "Housing"
 
 [[rules]]
 pattern = "Mercadona"
@@ -59,8 +60,6 @@ category = "Groceries"
 [[rules]]
 pattern = "Mercato Centrale"
 category = "Groceries"
-
-# ── Dining ────────────────────────────────────────────────────────────────────
 
 [[rules]]
 pattern = "Starbucks"
@@ -226,8 +225,6 @@ category = "Dining"
 pattern = "Gelato"
 category = "Dining"
 
-# ── Transport ─────────────────────────────────────────────────────────────────
-
 [[rules]]
 pattern = "Uber"
 category = "Transport"
@@ -260,8 +257,6 @@ category = "Transport"
 pattern = "CTS Supermercati"
 category = "Transport"
 
-# ── Health ────────────────────────────────────────────────────────────────────
-
 [[rules]]
 pattern = "Farmacia"
 category = "Health"
@@ -269,8 +264,6 @@ category = "Health"
 [[rules]]
 pattern = "Shave Barber"
 category = "Health"
-
-# ── Subscriptions ─────────────────────────────────────────────────────────────
 
 [[rules]]
 pattern = "Vodafone"
@@ -307,8 +300,6 @@ category = "Subscriptions"
 [[rules]]
 pattern = "Decathlon"
 category = "Subscriptions"
-
-# ── Entertainment ─────────────────────────────────────────────────────────────
 
 [[rules]]
 pattern = "Cinesa"
@@ -349,3 +340,35 @@ category = "Entertainment"
 [[rules]]
 pattern = "Transferencia a MATTIA SPOLLADORE"
 category = "Entertainment"
+
+[[rules]]
+pattern = "Luca spolladore td"
+type = "investment"
+
+[[rules]]
+pattern = "In risto lab             madrid       es"
+category = "Dining"
+
+[[rules]]
+pattern = "Adeudo disa energia electrica"
+category = "Housing"
+
+[[rules]]
+pattern = "Adeudo de telefonica"
+category = "Housing"
+
+[[rules]]
+pattern = "Empresa municipal emt"
+category = "Transport"
+
+[[rules]]
+pattern = "Tierra sagasta sl."
+category = "Dining"
+
+[[rules]]
+pattern = "752826014400202"
+category = "Housing"
+
+[[rules]]
+pattern = "Month expenses"
+type = "transfer"
