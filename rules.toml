@@ -1,5 +1,5 @@
 [categories]
-buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Investments"]
+buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Investments", "Shopping", "Travel"]
 
 # ── Type overrides ────────────────────────────────────────────────────────────
 # These run before category rules. A rule can set both type and category.
@@ -324,7 +324,7 @@ category = "Entertainment"
 
 [[rules]]
 pattern = "Amazon"
-category = "Entertainment"
+category = "Subscriptions"
 
 [[rules]]
 pattern = "Vinted"
