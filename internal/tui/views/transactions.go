@@ -21,8 +21,9 @@ type TransactionsModel struct {
 	all           []domain.Transaction
 	buckets       []string
 	filter        txFilter
-	cursor        int // selected row (absolute index into filtered())
-	offset        int // first visible row
+	fromDrillDown bool // esc goes straight back instead of clearing filter first
+	cursor        int  // selected row (absolute index into filtered())
+	offset        int  // first visible row
 	height        int
 	editing       bool
 	editSection   int // 0 = type, 1 = category
@@ -57,6 +58,7 @@ func (m TransactionsModel) Height() int { return m.height }
 
 func (m TransactionsModel) SetFilter(category string) TransactionsModel {
 	m.filter = txFilter{category: category}
+	m.fromDrillDown = true
 	m.cursor = 0
 	m.offset = 0
 	return m
@@ -69,6 +71,7 @@ func (m TransactionsModel) SetCellFilter(category string, p domain.Period) Trans
 		dateFrom:    p.Start,
 		dateTo:      p.End,
 	}
+	m.fromDrillDown = true
 	m.cursor = 0
 	m.offset = 0
 	return m
@@ -128,6 +131,9 @@ func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, te
 		m.filter.typeCursor = indexOfType(m.filter.txType)
 		m.filter.catCursor = indexOfCat(m.filter.category, m.buckets)
 	case "esc":
+		if m.fromDrillDown {
+			return m, func() tea.Msg { return GoBackMsg{} }
+		}
 		if m.filter.txType != "" || m.filter.category != "" || !m.filter.dateFrom.IsZero() || m.filter.periodLabel != "" {
 			m.filter = txFilter{}
 			m.cursor = 0
