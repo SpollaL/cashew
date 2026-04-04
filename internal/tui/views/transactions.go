@@ -10,22 +10,32 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var editTypes = []domain.TransactionType{
+	domain.Expense,
+	domain.Income,
+	domain.Investment,
+	domain.Transfer,
+}
+
 type TransactionsModel struct {
-	all     []domain.Transaction // full unfiltered list
-	buckets []string
-	filter  txFilter
-	offset  int
-	height  int
+	all        []domain.Transaction
+	buckets    []string
+	filter     txFilter
+	cursor     int // selected row (absolute index into filtered())
+	offset     int // first visible row
+	height     int
+	editing    bool
+	editCursor int
 }
 
 type txFilter struct {
 	open        bool
-	txType      string // "" = all
-	category    string // "" = all
-	periodLabel string // display only
+	txType      string
+	category    string
+	periodLabel string
 	dateFrom    time.Time
 	dateTo      time.Time
-	section     int // 0 = type section, 1 = category section
+	section     int
 	typeCursor  int
 	catCursor   int
 }
@@ -41,14 +51,13 @@ func (m TransactionsModel) SetSize(height int) TransactionsModel {
 	return m
 }
 
-// SetFilter pre-sets the category filter, used when drilling from Categories row.
 func (m TransactionsModel) SetFilter(category string) TransactionsModel {
 	m.filter = txFilter{category: category}
+	m.cursor = 0
 	m.offset = 0
 	return m
 }
 
-// SetCellFilter pre-sets both category and period, used when drilling from a cell.
 func (m TransactionsModel) SetCellFilter(category string, p domain.Period) TransactionsModel {
 	m.filter = txFilter{
 		category:    category,
@@ -56,12 +65,14 @@ func (m TransactionsModel) SetCellFilter(category string, p domain.Period) Trans
 		dateFrom:    p.Start,
 		dateTo:      p.End,
 	}
+	m.cursor = 0
 	m.offset = 0
 	return m
 }
 
 func (m TransactionsModel) ClearFilter() TransactionsModel {
 	m.filter = txFilter{}
+	m.cursor = 0
 	m.offset = 0
 	return m
 }
@@ -71,30 +82,74 @@ func (m TransactionsModel) Update(msg tea.Msg) (TransactionsModel, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
-
+	if m.editing {
+		return m.updateEditing(keyMsg)
+	}
 	if m.filter.open {
 		return m.updateFilter(keyMsg)
 	}
+	return m.updateBrowsing(keyMsg)
+}
 
-	switch keyMsg.String() {
+func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, tea.Cmd) {
+	filtered := m.filtered()
+	pageSize := m.pageSize()
+
+	switch msg.String() {
 	case "up", "k":
-		if m.offset > 0 {
-			m.offset--
+		if m.cursor > 0 {
+			m.cursor--
+			if m.cursor < m.offset {
+				m.offset = m.cursor
+			}
 		}
 	case "down", "j":
-		visible := m.filtered()
-		if m.offset < len(visible)-m.pageSize() {
-			m.offset++
+		if m.cursor < len(filtered)-1 {
+			m.cursor++
+			if m.cursor >= m.offset+pageSize {
+				m.offset = m.cursor - pageSize + 1
+			}
+		}
+	case "e":
+		if len(filtered) > 0 {
+			m.editing = true
+			m.editCursor = indexOfTxType(filtered[m.cursor].Type)
 		}
 	case "f":
 		m.filter.open = true
-		// Position cursors to match current filter values.
 		m.filter.section = 0
 		m.filter.typeCursor = indexOfType(m.filter.txType)
 		m.filter.catCursor = indexOfCat(m.filter.category, m.buckets)
 	case "esc":
 		m.filter = txFilter{}
+		m.cursor = 0
 		m.offset = 0
+	}
+	return m, nil
+}
+
+func (m TransactionsModel) updateEditing(msg tea.KeyMsg) (TransactionsModel, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.editCursor > 0 {
+			m.editCursor--
+		}
+	case "down", "j":
+		if m.editCursor < len(editTypes)-1 {
+			m.editCursor++
+		}
+	case "enter":
+		filtered := m.filtered()
+		if m.cursor < len(filtered) {
+			pattern := filtered[m.cursor].Description
+			newType := editTypes[m.editCursor]
+			m.editing = false
+			return m, func() tea.Msg {
+				return RuleSavedMsg{Pattern: pattern, Type: newType}
+			}
+		}
+	case "esc":
+		m.editing = false
 	}
 	return m, nil
 }
@@ -102,7 +157,7 @@ func (m TransactionsModel) Update(msg tea.Msg) (TransactionsModel, tea.Cmd) {
 func (m TransactionsModel) updateFilter(msg tea.KeyMsg) (TransactionsModel, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
-		m.filter.section = 1 - m.filter.section // toggle 0/1
+		m.filter.section = 1 - m.filter.section
 	case "up", "k":
 		if m.filter.section == 0 {
 			if m.filter.typeCursor > 0 {
@@ -119,13 +174,11 @@ func (m TransactionsModel) updateFilter(msg tea.KeyMsg) (TransactionsModel, tea.
 				m.filter.typeCursor++
 			}
 		} else {
-			maxCat := len(m.buckets) // +1 for "all"
-			if m.filter.catCursor < maxCat {
+			if m.filter.catCursor < len(m.buckets) {
 				m.filter.catCursor++
 			}
 		}
 	case "enter":
-		// Apply selections.
 		if m.filter.typeCursor == 0 {
 			m.filter.txType = ""
 		} else {
@@ -137,6 +190,7 @@ func (m TransactionsModel) updateFilter(msg tea.KeyMsg) (TransactionsModel, tea.
 			m.filter.category = m.buckets[m.filter.catCursor-1]
 		}
 		m.filter.open = false
+		m.cursor = 0
 		m.offset = 0
 	case "esc":
 		m.filter.open = false
@@ -146,17 +200,20 @@ func (m TransactionsModel) updateFilter(msg tea.KeyMsg) (TransactionsModel, tea.
 
 func (m TransactionsModel) View() string {
 	var sb strings.Builder
-
 	filtered := m.filtered()
 	bold := lipgloss.NewStyle().Bold(true)
 
-	// Header
 	filterDesc := m.filterDescription()
 	fmt.Fprintf(&sb, "\n  %s  %s  (%d shown)\n\n",
 		bold.Render("Transactions"), filterDesc, len(filtered))
 
 	if m.filter.open {
 		sb.WriteString(m.renderFilterPanel())
+		return sb.String()
+	}
+
+	if m.editing {
+		sb.WriteString(m.renderEditPanel(filtered))
 		return sb.String()
 	}
 
@@ -171,7 +228,12 @@ func (m TransactionsModel) View() string {
 		end = len(filtered)
 	}
 
-	for _, tx := range filtered[start:end] {
+	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+
+	for i, tx := range filtered[start:end] {
+		absIdx := start + i
+		isSelected := absIdx == m.cursor
+
 		desc := tx.Description
 		if len(desc) > 36 {
 			desc = desc[:33] + "..."
@@ -190,15 +252,23 @@ func (m TransactionsModel) View() string {
 		}
 		amount := lipgloss.NewStyle().Foreground(amountColor).Render(fmt.Sprintf("%10.2f", tx.Amount))
 
-		fmt.Fprintf(&sb, "  %s  %-36s  %s  %-6s  %-12s  %s\n",
-			tx.Date.Format("2006-01-02"), desc, amount, tx.Currency, tx.Type, tx.Category)
+		prefix := "  "
+		if isSelected {
+			prefix = "> "
+		}
+		row := fmt.Sprintf("%s%s  %-36s  %s  %-6s  %-12s  %s",
+			prefix, tx.Date.Format("2006-01-02"), desc, amount, tx.Currency, tx.Type, tx.Category)
+		if isSelected {
+			row = selectedStyle.Render(row)
+		}
+		sb.WriteString(row + "\n")
 	}
 
 	if len(filtered) == 0 {
 		sb.WriteString("  No transactions match the current filter.\n")
 	}
 
-	// Totals line — always computed over all filtered rows, not just the visible page.
+	// Totals
 	var income, expenses, investments float64
 	for _, tx := range filtered {
 		switch tx.Type {
@@ -225,8 +295,41 @@ func (m TransactionsModel) View() string {
 		lipgloss.NewStyle().Foreground(netColor).Bold(true).Render(fmt.Sprintf("%8.2f", net)),
 	)
 
-	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ scroll   f filter   esc clear filter   s summary   c categories   r review   q quit\n",
+	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit type   f filter   esc clear filter\n",
 		start+1, end, len(filtered))
+	sb.WriteString(globalHint() + "\n")
+
+	return sb.String()
+}
+
+func (m TransactionsModel) renderEditPanel(filtered []domain.Transaction) string {
+	var sb strings.Builder
+
+	if m.cursor < len(filtered) {
+		tx := filtered[m.cursor]
+		desc := tx.Description
+		if len(desc) > 40 {
+			desc = desc[:37] + "..."
+		}
+		fmt.Fprintf(&sb, "  Set type for: %s\n\n", lipgloss.NewStyle().Bold(true).Render(desc))
+	}
+
+	cursorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	sb.WriteString("  ┌─ Set type ──────────────┐\n")
+	for i, t := range editTypes {
+		marker := "  │     "
+		if i == m.editCursor {
+			marker = "  │  >  "
+		}
+		label := string(t)
+		if i == m.editCursor {
+			label = cursorStyle.Render(label)
+		}
+		fmt.Fprintf(&sb, "%s%s\n", marker, label)
+	}
+	sb.WriteString("  │\n")
+	sb.WriteString("  │  enter apply   esc cancel\n")
+	sb.WriteString("  └─────────────────────────┘\n")
 
 	return sb.String()
 }
@@ -239,7 +342,6 @@ func (m TransactionsModel) renderFilterPanel() string {
 
 	sb.WriteString("  ┌─ Filter ───────────────────────────────┐\n")
 
-	// Type section
 	typeHeader := "  │  Type"
 	if m.filter.section == 0 {
 		typeHeader = "  │  " + activeStyle.Render("Type")
@@ -251,9 +353,6 @@ func (m TransactionsModel) renderFilterPanel() string {
 			marker = " > "
 		}
 		label := t
-		if t == "" || t == "all" {
-			label = "all"
-		}
 		if i == m.filter.typeCursor {
 			label = cursorStyle.Render(label)
 		}
@@ -262,7 +361,6 @@ func (m TransactionsModel) renderFilterPanel() string {
 
 	sb.WriteString("  │\n")
 
-	// Category section
 	catHeader := "  │  Category"
 	if m.filter.section == 1 {
 		catHeader = "  │  " + activeStyle.Render("Category")
@@ -291,8 +389,7 @@ func (m TransactionsModel) renderFilterPanel() string {
 
 func (m TransactionsModel) filtered() []domain.Transaction {
 	f := m.filter
-	noFilter := f.txType == "" && f.category == "" && f.dateFrom.IsZero()
-	if noFilter {
+	if f.txType == "" && f.category == "" && f.dateFrom.IsZero() {
 		return m.all
 	}
 	var out []domain.Transaction
@@ -332,7 +429,7 @@ func (m TransactionsModel) filterDescription() string {
 }
 
 func (m TransactionsModel) pageSize() int {
-	size := m.height - 8
+	size := m.height - 10
 	if size < 5 {
 		return 5
 	}
@@ -354,7 +451,16 @@ func indexOfCat(cat string, buckets []string) int {
 	}
 	for i, b := range buckets {
 		if b == cat {
-			return i + 1 // +1 because index 0 is "all"
+			return i + 1
+		}
+	}
+	return 0
+}
+
+func indexOfTxType(t domain.TransactionType) int {
+	for i, v := range editTypes {
+		if v == t {
+			return i
 		}
 	}
 	return 0
