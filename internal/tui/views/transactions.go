@@ -241,9 +241,9 @@ func (m TransactionsModel) View() string {
 	}
 
 	// Column headers
-	fmt.Fprintf(&sb, "  %-12s  %-36s  %10s  %-6s  %-12s  %s\n",
-		"Date", "Description", "Amount", "Curr", "Type", "Category")
-	fmt.Fprintf(&sb, "  %s\n", strings.Repeat("─", 98))
+	fmt.Fprintf(&sb, "  %-12s  %-36s  %10s  %-6s  %-10s  %-12s  %s\n",
+		"Date", "Description", "Amount", "Curr", "Bank", "Type", "Category")
+	fmt.Fprintf(&sb, "  %s\n", strings.Repeat("─", 110))
 
 	start := m.offset
 	end := start + m.pageSize()
@@ -279,8 +279,8 @@ func (m TransactionsModel) View() string {
 		if isSelected {
 			prefix = "> "
 		}
-		row := fmt.Sprintf("%s%s  %-36s  %s  %-6s  %-12s  %s",
-			prefix, tx.Date.Format("2006-01-02"), desc, amount, tx.Currency, tx.Type, tx.Category)
+		row := fmt.Sprintf("%s%s  %-36s  %s  %-6s  %-10s  %-12s  %s",
+			prefix, tx.Date.Format("2006-01-02"), desc, amount, tx.Currency, tx.Bank, tx.Type, tx.Category)
 		if isSelected {
 			row = selectedStyle.Render(row)
 		}
@@ -308,7 +308,7 @@ func (m TransactionsModel) View() string {
 	if net < 0 {
 		netColor = "1"
 	}
-	fmt.Fprintf(&sb, "  %s\n", strings.Repeat("─", 98))
+	fmt.Fprintf(&sb, "  %s\n", strings.Repeat("─", 110))
 	fmt.Fprintf(&sb,
 		"  %-50s  %s  %s  %s  net %s\n",
 		bold.Render("Totals"),
