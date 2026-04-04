@@ -53,6 +53,8 @@ func (m TransactionsModel) SetSize(height int) TransactionsModel {
 	return m
 }
 
+func (m TransactionsModel) Height() int { return m.height }
+
 func (m TransactionsModel) SetFilter(category string) TransactionsModel {
 	m.filter = txFilter{category: category}
 	m.cursor = 0

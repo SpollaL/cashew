@@ -181,7 +181,7 @@ func (a App) applyRefresh(msg refreshMsg) App {
 	summaries := a.fullLedger.Aggregate(a.granularity)
 	a.summary = a.summary.SetData(summaries, a.granularity)
 	a.categories = a.categories.SetData(summaries, a.granularity)
-	a.transactions = views.NewTransactions(txs, msg.buckets)
+	a.transactions = views.NewTransactions(txs, msg.buckets).SetSize(a.transactions.Height())
 	a.review = a.review.SetDescriptions(rules.Uncategorised(txs, msg.rulesList))
 	return a
 }
