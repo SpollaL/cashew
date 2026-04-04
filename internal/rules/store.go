@@ -70,12 +70,19 @@ func SaveRule(path string, r domain.Rule) error {
 	patternLower := strings.ToLower(r.Pattern)
 	for i, existing := range rulesList {
 		if strings.ToLower(existing.Pattern) == patternLower {
-			rulesList[i] = r // update in place
+			// Merge: only overwrite fields that are non-empty in the new rule.
+			if r.Type != "" {
+				rulesList[i].Type = r.Type
+			}
+			if r.Category != "" {
+				rulesList[i].Category = r.Category
+			}
 			return write(path, rulesList, buckets)
 		}
 	}
 
-	rulesList = append(rulesList, r)
+	// Prepend so full-description rules take precedence over substring rules.
+	rulesList = append([]domain.Rule{r}, rulesList...)
 	return write(path, rulesList, buckets)
 }
 
