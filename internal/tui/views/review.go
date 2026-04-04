@@ -78,6 +78,13 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 			}[msg.String()]
 			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: txType} }
 		}
+	case "n":
+		if len(m.descriptions) > 0 {
+			// Save a pattern-only rule to acknowledge this description
+			// without assigning a category. It won't appear in review again.
+			pattern := m.descriptions[m.cursor]
+			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern} }
+		}
 	}
 	return m, nil
 }
@@ -158,7 +165,7 @@ func (m ReviewModel) View() string {
 		lipgloss.NewStyle().Width(30).Render(right.String()),
 	)
 
-	hint := "\n  ↑/↓ navigate   enter category   i income   x transfer   v investment\n" + globalHint()
+	hint := "\n  ↑/↓ navigate   enter category   i income   x transfer   v investment   n no category\n" + globalHint()
 	if m.picking {
 		hint = "\n  ↑/↓ navigate   enter confirm   esc cancel"
 	}

@@ -45,7 +45,7 @@ func main() {
 	allTxs = rules.Apply(allTxs, rulesList)
 	l := ledger.New(allTxs)
 
-	app := tui.New(l, buckets, rulesPath)
+	app := tui.New(l, rulesList, buckets, rulesPath)
 	p := tea.NewProgram(app, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

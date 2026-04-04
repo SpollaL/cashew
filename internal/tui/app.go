@@ -20,6 +20,7 @@ const (
 
 type App struct {
 	fullLedger  ledger.Ledger
+	rulesList   []domain.Rule
 	rulesPath   string
 	buckets     []string
 	granularity domain.Granularity
@@ -34,9 +35,9 @@ type App struct {
 	height int
 }
 
-func New(l ledger.Ledger, buckets []string, rulesPath string) App {
+func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath string) App {
 	txs := l.All()
-	uncategorised := rules.Uncategorised(txs)
+	uncategorised := rules.Uncategorised(txs, rulesList)
 
 	g := domain.Monthly
 	summaries := l.Aggregate(g)
@@ -48,6 +49,7 @@ func New(l ledger.Ledger, buckets []string, rulesPath string) App {
 
 	return App{
 		fullLedger:   l,
+		rulesList:    rulesList,
 		rulesPath:    rulesPath,
 		buckets:      buckets,
 		granularity:  g,
@@ -173,12 +175,13 @@ type refreshMsg struct {
 func (a App) applyRefresh(msg refreshMsg) App {
 	txs := rules.Apply(a.fullLedger.All(), msg.rulesList)
 	a.fullLedger = ledger.New(txs)
+	a.rulesList = msg.rulesList
 	a.buckets = msg.buckets
 
 	summaries := a.fullLedger.Aggregate(a.granularity)
 	a.summary = a.summary.SetData(summaries, a.granularity)
 	a.categories = a.categories.SetData(summaries, a.granularity)
 	a.transactions = views.NewTransactions(txs, msg.buckets)
-	a.review = a.review.SetDescriptions(rules.Uncategorised(txs))
+	a.review = a.review.SetDescriptions(rules.Uncategorised(txs, msg.rulesList))
 	return a
 }
