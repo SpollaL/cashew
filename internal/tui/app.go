@@ -26,6 +26,7 @@ type App struct {
 	granularity domain.Granularity
 
 	active       viewKey
+	prevView     viewKey
 	summary      views.SummaryModel
 	categories   views.CategoriesModel
 	transactions views.TransactionsModel
@@ -107,7 +108,12 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			a.transactions = a.transactions.SetFilter(msg.Category)
 		}
+		a.prevView = a.active
 		a.active = viewTransactions
+		return a, nil
+
+	case views.GoBackMsg:
+		a.active = a.prevView
 		return a, nil
 
 	case views.RuleSavedMsg:

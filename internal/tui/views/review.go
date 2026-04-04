@@ -9,6 +9,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// GoBackMsg is emitted when the user wants to return to the previous view.
+type GoBackMsg struct{}
+
 // RuleSavedMsg is emitted when the user assigns a category or type.
 // The App saves the rule and refreshes all state.
 type RuleSavedMsg struct {

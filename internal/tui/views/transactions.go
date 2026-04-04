@@ -128,9 +128,13 @@ func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, te
 		m.filter.typeCursor = indexOfType(m.filter.txType)
 		m.filter.catCursor = indexOfCat(m.filter.category, m.buckets)
 	case "esc":
-		m.filter = txFilter{}
-		m.cursor = 0
-		m.offset = 0
+		if m.filter.txType != "" || m.filter.category != "" || !m.filter.dateFrom.IsZero() || m.filter.periodLabel != "" {
+			m.filter = txFilter{}
+			m.cursor = 0
+			m.offset = 0
+		} else {
+			return m, func() tea.Msg { return GoBackMsg{} }
+		}
 	}
 	return m, nil
 }
@@ -320,7 +324,7 @@ func (m TransactionsModel) View() string {
 		lipgloss.NewStyle().Foreground(netColor).Bold(true).Render(fmt.Sprintf("%8.2f", net)),
 	)
 
-	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit   f filter   esc clear filter\n",
+	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit   f filter   esc clear / back\n",
 		start+1, end, len(filtered))
 	sb.WriteString(globalHint() + "\n")
 
