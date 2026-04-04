@@ -252,8 +252,8 @@ func (m CategoriesModel) View() string {
 		fmt.Fprintf(&sb, "  ←/→ scroll periods (%d–%d of %d)\n", colOffset+1, endCol, nPeriods)
 	}
 
-	sb.WriteString("\n  ↑/↓/←/→ navigate   enter drill into transactions")
-	sb.WriteString("   a y M w d granularity   s summary   t transactions   r review   q quit\n")
+	sb.WriteString("\n  ↑/↓/←/→ navigate   enter drill into transactions   a y M w d granularity\n")
+	sb.WriteString(globalHint() + "\n")
 	return sb.String()
 }
 

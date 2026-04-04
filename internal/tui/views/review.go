@@ -1,6 +1,7 @@
 package views
 
 import (
+	"cashew/internal/domain"
 	"fmt"
 	"strings"
 
@@ -8,11 +9,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// RuleSavedMsg is emitted when the user picks a category.
-// The App handles this by saving the rule and refreshing all state.
+// RuleSavedMsg is emitted when the user assigns a category or type.
+// The App saves the rule and refreshes all state.
 type RuleSavedMsg struct {
 	Pattern  string
 	Category string
+	Type     domain.TransactionType // empty = don't change type
 }
 
 type ReviewModel struct {
@@ -52,6 +54,16 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 		if len(m.descriptions) > 0 {
 			m.picking = true
 			m.categoryCursor = 0
+		}
+	case "i", "x", "v":
+		if len(m.descriptions) > 0 {
+			pattern := m.descriptions[m.cursor]
+			txType := map[string]domain.TransactionType{
+				"i": domain.Income,
+				"x": domain.Transfer,
+				"v": domain.Investment,
+			}[msg.String()]
+			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: txType} }
 		}
 	}
 	return m, nil
@@ -114,7 +126,7 @@ func (m ReviewModel) View() string {
 		lipgloss.NewStyle().Width(30).Render(right.String()),
 	)
 
-	hint := "\n  ↑/↓ navigate   enter pick category   s summary   t transactions   q quit"
+	hint := "\n  ↑/↓ navigate   enter category   i income   x transfer   v investment\n" + globalHint()
 	if m.picking {
 		hint = "\n  ↑/↓ navigate   enter confirm   esc cancel"
 	}

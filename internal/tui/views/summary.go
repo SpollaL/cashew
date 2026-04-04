@@ -113,8 +113,8 @@ func (m SummaryModel) View() string {
 		fmt.Fprintf(&sb, "\n  row %d/%d  ↑/↓ scroll\n", m.cursor+1, len(m.summaries))
 	}
 
-	sb.WriteString("\n  a all-time  y yearly  M monthly  w weekly  d daily")
-	sb.WriteString("   c categories  t transactions  r review  q quit\n")
+	sb.WriteString("\n  a all-time   y yearly   M monthly   w weekly   d daily   ↑/↓ scroll\n")
+	sb.WriteString(globalHint() + "\n")
 	return sb.String()
 }
 

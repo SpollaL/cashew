@@ -108,7 +108,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case views.RuleSavedMsg:
-		return a, a.saveAndRefresh(msg.Pattern, msg.Category)
+		return a, a.saveAndRefresh(msg)
 
 	case refreshMsg:
 		return a.applyRefresh(msg), nil
@@ -146,9 +146,14 @@ func (a App) View() string {
 	return ""
 }
 
-func (a App) saveAndRefresh(pattern, category string) tea.Cmd {
+func (a App) saveAndRefresh(msg views.RuleSavedMsg) tea.Cmd {
 	return func() tea.Msg {
-		if err := rules.SaveCategoryRule(a.rulesPath, pattern, category); err != nil {
+		r := domain.Rule{
+			Pattern:  msg.Pattern,
+			Category: msg.Category,
+			Type:     msg.Type,
+		}
+		if err := rules.SaveRule(a.rulesPath, r); err != nil {
 			return err
 		}
 		rulesList, buckets, err := rules.Load(a.rulesPath)
