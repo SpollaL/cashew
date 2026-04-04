@@ -14,11 +14,14 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: cashew <file.csv> [file2.csv ...]")
+		fmt.Fprintln(os.Stderr, "usage: cashew <file> [file2 ...]")
 		os.Exit(1)
 	}
 
-	parsers := []parser.Parser{parser.Revolut{}}
+	parsers := []parser.Parser{
+		parser.Revolut{},
+		parser.BBVA{},
+	}
 	rulesPath := "rules.toml"
 
 	var allTxs []domain.Transaction
@@ -30,6 +33,8 @@ func main() {
 		}
 		allTxs = append(allTxs, txs...)
 	}
+
+	allTxs = parser.Deduplicate(allTxs)
 
 	rulesList, buckets, err := rules.Load(rulesPath)
 	if err != nil {
