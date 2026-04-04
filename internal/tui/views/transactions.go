@@ -18,14 +18,16 @@ var editTypes = []domain.TransactionType{
 }
 
 type TransactionsModel struct {
-	all        []domain.Transaction
-	buckets    []string
-	filter     txFilter
-	cursor     int // selected row (absolute index into filtered())
-	offset     int // first visible row
-	height     int
-	editing    bool
-	editCursor int
+	all           []domain.Transaction
+	buckets       []string
+	filter        txFilter
+	cursor        int // selected row (absolute index into filtered())
+	offset        int // first visible row
+	height        int
+	editing       bool
+	editSection   int // 0 = type, 1 = category
+	editCursor    int // index into editTypes
+	editCatCursor int // 0 = (none), 1..N = buckets index
 }
 
 type txFilter struct {
@@ -112,8 +114,11 @@ func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, te
 		}
 	case "e":
 		if len(filtered) > 0 {
+			tx := filtered[m.cursor]
 			m.editing = true
-			m.editCursor = indexOfTxType(filtered[m.cursor].Type)
+			m.editSection = 0
+			m.editCursor = indexOfTxType(tx.Type)
+			m.editCatCursor = indexOfCat(tx.Category, m.buckets)
 		}
 	case "f":
 		m.filter.open = true
@@ -130,22 +135,40 @@ func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, te
 
 func (m TransactionsModel) updateEditing(msg tea.KeyMsg) (TransactionsModel, tea.Cmd) {
 	switch msg.String() {
+	case "tab":
+		m.editSection = 1 - m.editSection
 	case "up", "k":
-		if m.editCursor > 0 {
-			m.editCursor--
+		if m.editSection == 0 {
+			if m.editCursor > 0 {
+				m.editCursor--
+			}
+		} else {
+			if m.editCatCursor > 0 {
+				m.editCatCursor--
+			}
 		}
 	case "down", "j":
-		if m.editCursor < len(editTypes)-1 {
-			m.editCursor++
+		if m.editSection == 0 {
+			if m.editCursor < len(editTypes)-1 {
+				m.editCursor++
+			}
+		} else {
+			if m.editCatCursor < len(m.buckets) {
+				m.editCatCursor++
+			}
 		}
 	case "enter":
 		filtered := m.filtered()
 		if m.cursor < len(filtered) {
 			pattern := filtered[m.cursor].Description
 			newType := editTypes[m.editCursor]
+			var newCategory string
+			if m.editCatCursor > 0 {
+				newCategory = m.buckets[m.editCatCursor-1]
+			}
 			m.editing = false
 			return m, func() tea.Msg {
-				return RuleSavedMsg{Pattern: pattern, Type: newType}
+				return RuleSavedMsg{Pattern: pattern, Type: newType, Category: newCategory}
 			}
 		}
 	case "esc":
@@ -295,7 +318,7 @@ func (m TransactionsModel) View() string {
 		lipgloss.NewStyle().Foreground(netColor).Bold(true).Render(fmt.Sprintf("%8.2f", net)),
 	)
 
-	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit type   f filter   esc clear filter\n",
+	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit   f filter   esc clear filter\n",
 		start+1, end, len(filtered))
 	sb.WriteString(globalHint() + "\n")
 
@@ -308,28 +331,60 @@ func (m TransactionsModel) renderEditPanel(filtered []domain.Transaction) string
 	if m.cursor < len(filtered) {
 		tx := filtered[m.cursor]
 		desc := tx.Description
-		if len(desc) > 40 {
-			desc = desc[:37] + "..."
+		if len(desc) > 50 {
+			desc = desc[:47] + "..."
 		}
-		fmt.Fprintf(&sb, "  Set type for: %s\n\n", lipgloss.NewStyle().Bold(true).Render(desc))
+		fmt.Fprintf(&sb, "  Editing: %s\n\n", lipgloss.NewStyle().Bold(true).Render(desc))
 	}
 
-	cursorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	sb.WriteString("  ┌─ Set type ──────────────┐\n")
+	activeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	cursorStyle := lipgloss.NewStyle().Bold(true)
+
+	sb.WriteString("  ┌─ Edit ──────────────────────────────────┐\n")
+
+	// Type section
+	typeHeader := "  │  Type"
+	if m.editSection == 0 {
+		typeHeader = "  │  " + activeStyle.Render("Type")
+	}
+	sb.WriteString(typeHeader + "\n")
 	for i, t := range editTypes {
-		marker := "  │     "
-		if i == m.editCursor {
-			marker = "  │  >  "
+		marker := "   "
+		if i == m.editCursor && m.editSection == 0 {
+			marker = " > "
 		}
 		label := string(t)
 		if i == m.editCursor {
 			label = cursorStyle.Render(label)
 		}
-		fmt.Fprintf(&sb, "%s%s\n", marker, label)
+		fmt.Fprintf(&sb, "  │  %s%s\n", marker, label)
 	}
+
 	sb.WriteString("  │\n")
-	sb.WriteString("  │  enter apply   esc cancel\n")
-	sb.WriteString("  └─────────────────────────┘\n")
+
+	// Category section
+	catHeader := "  │  Category"
+	if m.editSection == 1 {
+		catHeader = "  │  " + activeStyle.Render("Category")
+	}
+	sb.WriteString(catHeader + "\n")
+
+	catOptions := append([]string{"(none)"}, m.buckets...)
+	for i, cat := range catOptions {
+		marker := "   "
+		if i == m.editCatCursor && m.editSection == 1 {
+			marker = " > "
+		}
+		label := cat
+		if i == m.editCatCursor {
+			label = cursorStyle.Render(label)
+		}
+		fmt.Fprintf(&sb, "  │  %s%s\n", marker, label)
+	}
+
+	sb.WriteString("  │\n")
+	sb.WriteString("  │  tab switch   enter apply   esc cancel\n")
+	sb.WriteString("  └─────────────────────────────────────────┘\n")
 
 	return sb.String()
 }
