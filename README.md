@@ -1,12 +1,18 @@
 # cashew
 
-Personal finance tracker for the terminal. Reads CSV/XLSX exports from multiple banks, categorises transactions with a rule engine, and presents income, expenses and investments across configurable time granularities.
+Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank, categorises transactions with a rule engine, and presents income, expenses and investments across configurable time granularities.
 
-![views: summary, categories pivot, transactions, review](https://raw.githubusercontent.com/SpollaL/cashew/rebuild/docs/screenshot.png)
+## Supported banks
+
+| Bank | Format | Notes |
+|------|--------|-------|
+| Revolut | CSV | es-ES and en-GB exports |
+| BBVA | XLSX | Standard account statement export |
+
+> Other banks are not supported yet. Adding a new one requires implementing the `Parser` interface in `internal/parser/`.
 
 ## Features
 
-- **Multi-bank**: BBVA (XLSX) and Revolut (CSV, es-ES and en-GB)
 - **Rule-based categorisation**: pattern matching with a TOML config file
 - **Review queue**: triage uncategorised expenses without leaving the terminal
 - **Category pivot table**: drill down from any cell into filtered transactions
