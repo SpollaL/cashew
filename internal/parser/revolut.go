@@ -1,24 +1,25 @@
 package parser
 
 import (
+	"cashew/internal/domain"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"time"
-
-	"cashew/internal/domain"
 )
 
 type Revolut struct{}
 
 func (Revolut) Name() string { return "Revolut" }
 
-// Detect claims the file if the header contains "Fecha de inicio" (Spanish Revolut export).
-func (Revolut) Detect(header []string) bool {
+// Detect claims CSV files whose header contains Revolut's date column
+// in either the Spanish ("Fecha de inicio") or English ("Started Date") export.
+func (Revolut) Detect(path string, header []string) bool {
 	for _, h := range header {
-		if strings.TrimSpace(h) == "Fecha de inicio" {
+		h = strings.TrimSpace(h)
+		if h == "Fecha de inicio" || h == "Started Date" {
 			return true
 		}
 	}
@@ -46,11 +47,9 @@ func (Revolut) Parse(r io.Reader) ([]domain.Transaction, error) {
 		if len(row) < 9 {
 			continue
 		}
-
 		tx, err := parseRevolutRow(row)
 		if err != nil {
-			// Skip malformed rows rather than aborting.
-			continue
+			continue // skip malformed rows
 		}
 		txs = append(txs, tx)
 	}
@@ -58,9 +57,10 @@ func (Revolut) Parse(r io.Reader) ([]domain.Transaction, error) {
 }
 
 func parseRevolutRow(row []string) (domain.Transaction, error) {
-	// Revolut CSV columns (es-ES export):
-	// 0: Tipo, 1: Producto, 2: Fecha de inicio, 3: Fecha de finalización,
-	// 4: Descripción, 5: Importe, 6: Comisión, 7: Divisa, 8: State, 9: Saldo
+	// Columns are identical in es-ES and en-GB exports:
+	// 0: Type/Tipo, 1: Product/Producto, 2: Started Date/Fecha de inicio,
+	// 3: Completed Date/Fecha de finalización, 4: Description/Descripción,
+	// 5: Amount/Importe, 6: Fee/Comisión, 7: Currency/Divisa, 8: State, 9: Balance/Saldo
 
 	date, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(row[2]))
 	if err != nil {
@@ -73,14 +73,12 @@ func parseRevolutRow(row []string) (domain.Transaction, error) {
 		return domain.Transaction{}, fmt.Errorf("parse amount %q: %w", row[5], err)
 	}
 
-	txType := revolutType(strings.TrimSpace(row[0]), amount)
-
 	return domain.Transaction{
 		Date:        date,
 		Description: strings.TrimSpace(row[4]),
 		Amount:      abs(amount),
 		Currency:    strings.TrimSpace(row[7]),
-		Type:        txType,
+		Type:        revolutType(strings.TrimSpace(row[0]), amount),
 		Bank:        "Revolut",
 	}, nil
 }
