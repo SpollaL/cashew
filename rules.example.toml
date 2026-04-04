@@ -1,0 +1,33 @@
+[categories]
+buckets = ["Groceries", "Dining", "Transport", "Health", "Subscriptions", "Entertainment", "Shopping", "Travel", "Housing"]
+
+# Rules are matched by substring (case-insensitive) against the transaction description.
+# A rule can set type, category, or both. First matching rule per field wins.
+# Rules saved via the TUI are prepended so they take precedence over these.
+
+# ── Type overrides ────────────────────────────────────────────────────────────
+
+# Internal transfers between your own accounts
+# [[rules]]
+# pattern = "To Savings"
+# type = "transfer"
+
+# Investments
+# [[rules]]
+# pattern = "Robo Advisor"
+# type = "investment"
+
+# Salary / income
+# [[rules]]
+# pattern = "Nómina"
+# type = "income"
+
+# ── Category rules ────────────────────────────────────────────────────────────
+
+# [[rules]]
+# pattern = "Mercadona"
+# category = "Groceries"
+
+# [[rules]]
+# pattern = "Alquiler"
+# category = "Housing"
