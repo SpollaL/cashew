@@ -39,7 +39,9 @@ func Load(path string, parsers []Parser) ([]domain.Transaction, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read header from %s: %w", path, err)
 		}
-		f.Seek(0, io.SeekStart)
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil, fmt.Errorf("seek %s: %w", path, err)
+		}
 	}
 
 	var matched Parser
@@ -58,6 +60,13 @@ func Load(path string, parsers []Parser) ([]domain.Transaction, error) {
 		return nil, fmt.Errorf("parse %s (%s): %w", path, matched.Name(), err)
 	}
 	return txs, nil
+}
+
+func abs(f float64) float64 {
+	if f < 0 {
+		return -f
+	}
+	return f
 }
 
 // Deduplicate removes transactions with identical date+description+amount+currency+bank.

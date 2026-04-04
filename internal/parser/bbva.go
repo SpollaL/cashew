@@ -4,6 +4,7 @@ import (
 	"cashew/internal/domain"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -41,18 +42,24 @@ func (BBVA) Parse(r io.Reader) ([]domain.Transaction, error) {
 	const dataStartRow = 5
 
 	var txs []domain.Transaction
+	skipped := 0
 	for i, row := range rows {
 		if i < dataStartRow {
 			continue
 		}
 		if len(row) < 6 {
+			skipped++
 			continue
 		}
 		tx, err := parseBBVARow(row)
 		if err != nil {
-			continue // skip malformed rows
+			skipped++
+			continue
 		}
 		txs = append(txs, tx)
+	}
+	if skipped > 0 {
+		fmt.Fprintf(os.Stderr, "bbva: skipped %d malformed rows\n", skipped)
 	}
 	return txs, nil
 }

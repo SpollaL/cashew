@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ func (Revolut) Parse(r io.Reader) ([]domain.Transaction, error) {
 	}
 
 	var txs []domain.Transaction
+	skipped := 0
 	for {
 		row, err := cr.Read()
 		if err == io.EOF {
@@ -45,13 +47,18 @@ func (Revolut) Parse(r io.Reader) ([]domain.Transaction, error) {
 			return nil, fmt.Errorf("read row: %w", err)
 		}
 		if len(row) < 9 {
+			skipped++
 			continue
 		}
 		tx, err := parseRevolutRow(row)
 		if err != nil {
-			continue // skip malformed rows
+			skipped++
+			continue
 		}
 		txs = append(txs, tx)
+	}
+	if skipped > 0 {
+		fmt.Fprintf(os.Stderr, "revolut: skipped %d malformed rows\n", skipped)
 	}
 	return txs, nil
 }
@@ -96,9 +103,3 @@ func revolutType(rawType string, amount float64) domain.TransactionType {
 	return domain.Expense
 }
 
-func abs(f float64) float64 {
-	if f < 0 {
-		return -f
-	}
-	return f
-}
