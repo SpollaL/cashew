@@ -70,6 +70,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.summary = a.summary.SetSize(msg.Height)
 		a.categories = a.categories.SetSize(msg.Width, msg.Height)
 		a.transactions = a.transactions.SetSize(msg.Height)
+		a.review = a.review.SetSize(msg.Height)
 		return a, nil
 
 	case tea.KeyMsg:

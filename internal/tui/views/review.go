@@ -20,6 +20,8 @@ type RuleSavedMsg struct {
 type ReviewModel struct {
 	descriptions   []string
 	cursor         int
+	offset         int // first visible row
+	height         int
 	buckets        []string
 	picking        bool
 	categoryCursor int
@@ -27,6 +29,11 @@ type ReviewModel struct {
 
 func NewReview(descriptions, buckets []string) ReviewModel {
 	return ReviewModel{descriptions: descriptions, buckets: buckets}
+}
+
+func (m ReviewModel) SetSize(height int) ReviewModel {
+	m.height = height
+	return m
 }
 
 func (m ReviewModel) Update(msg tea.Msg) (ReviewModel, tea.Cmd) {
@@ -45,10 +52,16 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
+			if m.cursor < m.offset {
+				m.offset = m.cursor
+			}
 		}
 	case "down", "j":
 		if m.cursor < len(m.descriptions)-1 {
 			m.cursor++
+			if visible := m.visibleRows(); m.cursor >= m.offset+visible {
+				m.offset = m.cursor - visible + 1
+			}
 		}
 	case "enter":
 		if len(m.descriptions) > 0 {
@@ -90,6 +103,15 @@ func (m ReviewModel) updatePicking(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 	return m, nil
 }
 
+func (m ReviewModel) visibleRows() int {
+	// Reserve lines: header(2) + hint(2) + some padding
+	rows := m.height - 6
+	if rows < 5 {
+		rows = 5
+	}
+	return rows
+}
+
 func (m ReviewModel) View() string {
 	if len(m.descriptions) == 0 {
 		return "\n  All transactions categorised!\n\n  Press 's' to view the summary.\n"
@@ -97,10 +119,17 @@ func (m ReviewModel) View() string {
 
 	var left, right strings.Builder
 
+	visible := m.visibleRows()
+	end := m.offset + visible
+	if end > len(m.descriptions) {
+		end = len(m.descriptions)
+	}
+
 	fmt.Fprintf(&left, "  Uncategorised (%d)\n\n", len(m.descriptions))
-	for i, d := range m.descriptions {
+	for i, d := range m.descriptions[m.offset:end] {
+		abs := m.offset + i
 		cursor := "  "
-		if i == m.cursor {
+		if abs == m.cursor {
 			cursor = "> "
 		}
 		line := cursor + d
@@ -108,6 +137,9 @@ func (m ReviewModel) View() string {
 			line = line[:49] + "..."
 		}
 		fmt.Fprintln(&left, line)
+	}
+	if end < len(m.descriptions) {
+		fmt.Fprintf(&left, "  ↓ %d more\n", len(m.descriptions)-end)
 	}
 
 	if m.picking {
