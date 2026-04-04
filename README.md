@@ -1,5 +1,8 @@
 # cashew
 
+[![CI](https://github.com/SpollaL/cashew/actions/workflows/ci.yml/badge.svg)](https://github.com/SpollaL/cashew/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank, categorises transactions with a rule engine, and presents income, expenses and investments across configurable time granularities.
 
 ## Supported banks
