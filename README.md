@@ -26,15 +26,25 @@ Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank
 ```bash
 git clone https://github.com/SpollaL/cashew
 cd cashew
-go build -o cashew ./cmd/cashew
+go build -o cashew ./cmd/cashew          # terminal UI
+go build -o cashew-server ./cmd/server   # web UI (optional)
 ```
 
 Requires Go 1.24+.
 
 ## Usage
 
+**Terminal UI**
+
 ```bash
 ./cashew data/*.csv data/*.xlsx
+```
+
+**Web UI** (handy on mobile)
+
+```bash
+./cashew-server -addr :8080 data/*.csv data/*.xlsx
+# then open http://localhost:8080 in any browser
 ```
 
 Place your bank exports in a `data/` directory (gitignored). The app detects each bank automatically.
@@ -72,15 +82,15 @@ Place your bank exports in a `data/` directory (gitignored). The app detects eac
 
 | Key | Action |
 |-----|--------|
-| `enter` | Pick category |
+| `enter` | Pick category (expense) |
 | `i` | Mark as income |
-| `x` | Mark as transfer |
-| `v` | Mark as investment |
+| `T` | Mark as transfer |
+| `I` | Mark as investment |
 | `n` | No category (dismiss) |
 
 ## Rules
 
-On first run, cashew creates `rules.toml` from the example file. Rules match transaction descriptions by substring (case-insensitive) and can set a type, a category, or both.
+If `rules.toml` doesn't exist, cashew creates one with a default set of category buckets and no rules — ready for you to populate via the review workflow. Rules match transaction descriptions by substring (case-insensitive) and can set a type, a category, or both.
 
 ```toml
 [categories]
@@ -104,11 +114,13 @@ Rules saved from the TUI are prepended so they take precedence over handwritten 
 ## Architecture
 
 ```
-cmd/cashew/        entry point
+cmd/cashew/        terminal UI entry point
+cmd/server/        web UI entry point
 internal/
   domain/          Transaction, TransactionType, Period, Granularity, Rule
   parser/          bank-specific parsers (Revolut, BBVA) + deduplication
   rules/           rule engine + TOML persistence
   ledger/          immutable, chainable filters + aggregation
   tui/             Bubble Tea app + views (summary, categories, transactions, review)
+  server/          HTTP handlers + HTML templates (summary, categories, transactions, review)
 ```
