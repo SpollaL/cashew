@@ -1,0 +1,52 @@
+{{define "content"}}
+<h2>Categories</h2>
+
+<div class="gran-bar">
+  <a href="/categories?gran=monthly" {{if eq .Gran "monthly"}}aria-current="true"{{end}}>Monthly</a>
+  <a href="/categories?gran=yearly"  {{if eq .Gran "yearly"}}aria-current="true"{{end}}>Yearly</a>
+  <a href="/categories?gran=alltime" {{if eq .Gran "alltime"}}aria-current="true"{{end}}>All time</a>
+</div>
+
+<div class="period-nav">
+  {{if .PrevLink}}<a href="{{.PrevLink}}">←</a>{{else}}<span>←</span>{{end}}
+  <strong>{{.PeriodLabel}}</strong>
+  {{if .NextLink}}<a href="{{.NextLink}}">→</a>{{else}}<span>→</span>{{end}}
+</div>
+
+{{if .Rows}}
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th scope="col" style="text-align:right">Total</th>
+        <th scope="col" style="text-align:right">Share</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td style="text-align:right" class="expense">{{printf "%.2f" .Total}}</td>
+        <td style="text-align:right">
+          {{if gt $.GrandTotal 0.0}}{{printf "%.0f" (pct .Total $.GrandTotal)}}%{{end}}
+        </td>
+        <td><a href="{{.Link}}">→ transactions</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td style="text-align:right" class="expense">{{printf "%.2f" .GrandTotal}}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</figure>
+{{else}}
+<p>No categorised expenses for this period.</p>
+{{end}}
+{{end}}

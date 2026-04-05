@@ -1,0 +1,42 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cashew</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    .income     { color: #2d9e2d; }
+    .expense    { color: #c0392b; }
+    .investment { color: #2980b9; }
+    .transfer   { color: #7f8c8d; }
+    .unknown    { color: #95a5a6; }
+    .positive   { color: #2d9e2d; font-weight: bold; }
+    .negative   { color: #c0392b; font-weight: bold; }
+    tfoot td    { font-weight: bold; border-top: 2px solid var(--pico-table-border-color); }
+    .gran-bar a { margin-right: 0.5rem; }
+    .gran-bar a[aria-current] { font-weight: bold; text-decoration: none; }
+    .period-nav { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .period-nav a { font-size: 1.2rem; }
+    .period-nav strong { flex: 1; text-align: center; }
+  </style>
+</head>
+<body>
+  <nav class="container-fluid">
+    <ul>
+      <li><strong>🌰 cashew</strong></li>
+    </ul>
+    <ul>
+      <li><a href="/summary"      {{if eq .ActiveNav "summary"}}aria-current="page"{{end}}>Summary</a></li>
+      <li><a href="/categories"   {{if eq .ActiveNav "categories"}}aria-current="page"{{end}}>Categories</a></li>
+      <li><a href="/transactions" {{if eq .ActiveNav "transactions"}}aria-current="page"{{end}}>Transactions</a></li>
+      <li><a href="/review"       {{if eq .ActiveNav "review"}}aria-current="page"{{end}}>Review</a></li>
+    </ul>
+  </nav>
+  <main class="container">
+    {{template "content" .}}
+  </main>
+</body>
+</html>
+{{end}}

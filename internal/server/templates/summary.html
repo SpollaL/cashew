@@ -1,0 +1,38 @@
+{{define "content"}}
+<h2>Summary</h2>
+
+<div class="gran-bar">
+  {{range .Granularities}}
+    <a href="/summary?gran={{.Value}}" {{if .Active}}aria-current="true"{{end}}>{{.Label}}</a>
+  {{end}}
+</div>
+
+{{if .Rows}}
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th>Period</th>
+        <th scope="col" style="text-align:right">Income</th>
+        <th scope="col" style="text-align:right">Expenses</th>
+        <th scope="col" style="text-align:right">Investments</th>
+        <th scope="col" style="text-align:right">Net</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td>{{.Label}}</td>
+        <td style="text-align:right" class="income">{{printf "%.2f" .Income}}</td>
+        <td style="text-align:right" class="expense">{{printf "%.2f" .Expenses}}</td>
+        <td style="text-align:right" class="investment">{{printf "%.2f" .Investments}}</td>
+        <td style="text-align:right" class="{{if lt .Net 0.0}}negative{{else}}positive{{end}}">{{printf "%.2f" .Net}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</figure>
+{{else}}
+<p>No transactions found.</p>
+{{end}}
+{{end}}

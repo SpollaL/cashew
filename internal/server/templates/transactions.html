@@ -1,0 +1,81 @@
+{{define "content"}}
+<h2>Transactions <small>({{.Count}})</small></h2>
+
+<form method="GET" action="/transactions">
+  <div class="grid">
+    <label>
+      Type
+      <select name="type">
+        <option value=""      {{if eq .Filter.Type ""}}selected{{end}}>All</option>
+        <option value="expense"    {{if eq .Filter.Type "expense"}}selected{{end}}>Expense</option>
+        <option value="income"     {{if eq .Filter.Type "income"}}selected{{end}}>Income</option>
+        <option value="investment" {{if eq .Filter.Type "investment"}}selected{{end}}>Investment</option>
+        <option value="transfer"   {{if eq .Filter.Type "transfer"}}selected{{end}}>Transfer</option>
+      </select>
+    </label>
+    <label>
+      Category
+      <select name="category">
+        <option value="" {{if eq .Filter.Category ""}}selected{{end}}>All</option>
+        {{range .Buckets}}
+        <option value="{{.}}" {{if eq . $.Filter.Category}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </label>
+    <label>
+      From
+      <input type="date" name="from" value="{{.Filter.From}}">
+    </label>
+    <label>
+      To
+      <input type="date" name="to" value="{{.Filter.To}}">
+    </label>
+  </div>
+  <button type="submit">Filter</button>
+  <a href="/transactions" role="button" class="secondary">Clear</a>
+</form>
+
+{{if .Rows}}
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Description</th>
+        <th scope="col" style="text-align:right">Amount</th>
+        <th>Currency</th>
+        <th>Bank</th>
+        <th>Type</th>
+        <th>Category</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td>{{.Date}}</td>
+        <td>{{.Description}}</td>
+        <td style="text-align:right" class="{{.TypeClass}}">{{.Amount}}</td>
+        <td>{{.Currency}}</td>
+        <td>{{.Bank}}</td>
+        <td class="{{.TypeClass}}">{{.Type}}</td>
+        <td>{{.Category}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">Totals</td>
+        <td style="text-align:right" class="income">in {{printf "%.2f" .Totals.Income}}</td>
+        <td style="text-align:right" class="expense">out {{printf "%.2f" .Totals.Expenses}}</td>
+        <td style="text-align:right" class="investment">inv {{printf "%.2f" .Totals.Investments}}</td>
+        <td colspan="2" style="text-align:right" class="{{if lt .Totals.Net 0.0}}negative{{else}}positive{{end}}">
+          net {{printf "%.2f" .Totals.Net}}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</figure>
+{{else}}
+<p>No transactions match the current filter.</p>
+{{end}}
+{{end}}

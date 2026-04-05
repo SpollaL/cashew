@@ -1,0 +1,55 @@
+{{define "content"}}
+<h2>Review queue <small>({{.Count}})</small></h2>
+
+{{if eq .Count 0}}
+<article>
+  <p>✓ All transactions are categorised.</p>
+  <a href="/summary">Go to summary →</a>
+</article>
+{{else}}
+<p>Assign a category or flag the type for each uncategorised expense.</p>
+
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Category</th>
+        <th>Type override</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Items}}
+      <tr>
+        <td>{{.Description}}</td>
+        <form method="POST" action="/review">
+          <input type="hidden" name="pattern" value="{{.Description}}">
+          <td>
+            <select name="category">
+              <option value="">— pick category —</option>
+              {{range $.Buckets}}
+              <option value="{{.}}">{{.}}</option>
+              {{end}}
+            </select>
+          </td>
+          <td>
+            <select name="type">
+              <option value="">— keep as expense —</option>
+              <option value="income">income</option>
+              <option value="transfer">transfer</option>
+              <option value="investment">investment</option>
+            </select>
+          </td>
+          <td style="display:flex; gap:0.5rem;">
+            <button type="submit" name="action" value="assign">Save</button>
+            <button type="submit" name="action" value="skip" class="secondary outline">Skip</button>
+          </td>
+        </form>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</figure>
+{{end}}
+{{end}}
