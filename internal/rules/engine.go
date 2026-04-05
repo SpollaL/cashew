@@ -36,18 +36,18 @@ func Apply(txs []domain.Transaction, rules []domain.Rule) []domain.Transaction {
 	return result
 }
 
-// Uncategorised returns unique descriptions of expense transactions that have
-// no category and are not already acknowledged by any rule (even a type-only
-// or pattern-only rule). This lets the user "skip" a description in the
+// Uncategorised returns one representative transaction per unique description
+// for expense transactions that have no category and are not already
+// acknowledged by any rule. This lets the user "skip" a description in the
 // review queue by saving a pattern-only rule for it.
-func Uncategorised(txs []domain.Transaction, rulesList []domain.Rule) []string {
+func Uncategorised(txs []domain.Transaction, rulesList []domain.Rule) []domain.Transaction {
 	seen := map[string]bool{}
-	var out []string
+	var out []domain.Transaction
 	for _, tx := range txs {
 		if tx.Type == domain.Expense && tx.Category == "" && !seen[tx.Description] {
 			if !matchedByAnyRule(tx.Description, rulesList) {
 				seen[tx.Description] = true
-				out = append(out, tx.Description)
+				out = append(out, tx)
 			}
 		}
 	}

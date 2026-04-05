@@ -21,7 +21,7 @@ type RuleSavedMsg struct {
 }
 
 type ReviewModel struct {
-	descriptions   []string
+	txs            []domain.Transaction
 	cursor         int
 	offset         int // first visible row
 	height         int
@@ -30,8 +30,8 @@ type ReviewModel struct {
 	categoryCursor int
 }
 
-func NewReview(descriptions, buckets []string) ReviewModel {
-	return ReviewModel{descriptions: descriptions, buckets: buckets}
+func NewReview(txs []domain.Transaction, buckets []string) ReviewModel {
+	return ReviewModel{txs: txs, buckets: buckets}
 }
 
 func (m ReviewModel) SetSize(height int) ReviewModel {
@@ -60,32 +60,59 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 			}
 		}
 	case "down", "j":
-		if m.cursor < len(m.descriptions)-1 {
+		if m.cursor < len(m.txs)-1 {
 			m.cursor++
 			if visible := m.visibleRows(); m.cursor >= m.offset+visible {
 				m.offset = m.cursor - visible + 1
 			}
 		}
+	case "pgup":
+		visible := m.visibleRows()
+		m.cursor -= visible
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		m.offset = m.cursor
+	case "pgdown":
+		visible := m.visibleRows()
+		last := len(m.txs) - 1
+		m.cursor += visible
+		if m.cursor > last {
+			m.cursor = last
+		}
+		if m.cursor >= m.offset+visible {
+			m.offset = m.cursor - visible + 1
+		}
+	case "g":
+		m.cursor = 0
+		m.offset = 0
+	case "G":
+		visible := m.visibleRows()
+		m.cursor = len(m.txs) - 1
+		m.offset = m.cursor - visible + 1
+		if m.offset < 0 {
+			m.offset = 0
+		}
 	case "enter":
-		if len(m.descriptions) > 0 {
+		if len(m.txs) > 0 {
 			m.picking = true
 			m.categoryCursor = 0
 		}
-	case "i", "x", "v":
-		if len(m.descriptions) > 0 {
-			pattern := m.descriptions[m.cursor]
+	case "i", "T", "I":
+		if len(m.txs) > 0 {
+			pattern := m.txs[m.cursor].Description
 			txType := map[string]domain.TransactionType{
 				"i": domain.Income,
-				"x": domain.Transfer,
-				"v": domain.Investment,
+				"T": domain.Transfer,
+				"I": domain.Investment,
 			}[msg.String()]
 			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: txType} }
 		}
 	case "n":
-		if len(m.descriptions) > 0 {
+		if len(m.txs) > 0 {
 			// Save a pattern-only rule to acknowledge this description
 			// without assigning a category. It won't appear in review again.
-			pattern := m.descriptions[m.cursor]
+			pattern := m.txs[m.cursor].Description
 			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern} }
 		}
 	}
@@ -103,7 +130,7 @@ func (m ReviewModel) updatePicking(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 			m.categoryCursor++
 		}
 	case "enter":
-		pattern := m.descriptions[m.cursor]
+		pattern := m.txs[m.cursor].Description
 		category := m.buckets[m.categoryCursor]
 		m.picking = false
 		return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Category: category} }
@@ -114,8 +141,8 @@ func (m ReviewModel) updatePicking(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 }
 
 func (m ReviewModel) visibleRows() int {
-	// Reserve lines: header(2) + hint(2) + some padding
-	rows := m.height - 6
+	// Reserve lines: header(3) + hint(2) + some padding
+	rows := m.height - 7
 	if rows < 5 {
 		rows = 5
 	}
@@ -123,7 +150,7 @@ func (m ReviewModel) visibleRows() int {
 }
 
 func (m ReviewModel) View() string {
-	if len(m.descriptions) == 0 {
+	if len(m.txs) == 0 {
 		return "\n  All transactions categorised!\n\n  Press 's' to view the summary.\n"
 	}
 
@@ -131,25 +158,40 @@ func (m ReviewModel) View() string {
 
 	visible := m.visibleRows()
 	end := m.offset + visible
-	if end > len(m.descriptions) {
-		end = len(m.descriptions)
+	if end > len(m.txs) {
+		end = len(m.txs)
 	}
 
-	fmt.Fprintf(&left, "  Uncategorised (%d)\n\n", len(m.descriptions))
-	for i, d := range m.descriptions[m.offset:end] {
+	fmt.Fprintf(&left, "  Uncategorised (%d)\n\n", len(m.txs))
+	for i, tx := range m.txs[m.offset:end] {
 		abs := m.offset + i
+		isSelected := abs == m.cursor
+
 		cursor := "  "
-		if abs == m.cursor {
+		if isSelected {
 			cursor = "> "
 		}
-		line := cursor + d
-		if len(line) > 52 {
-			line = line[:49] + "..."
+
+		desc := tx.Description
+		if len(desc) > 38 {
+			desc = desc[:35] + "..."
+		}
+
+		amountStr := fmt.Sprintf("%8.2f", tx.Amount)
+		dateStr := tx.Date.Format("2006-01-02")
+
+		line := fmt.Sprintf("%s%-38s  %s  %s", cursor, desc, amountStr, dateStr)
+		if isSelected {
+			line = lipgloss.NewStyle().Bold(true).Render(line)
 		}
 		fmt.Fprintln(&left, line)
+		if isSelected && !m.picking {
+			faint := lipgloss.NewStyle().Faint(true)
+			fmt.Fprintln(&left, faint.Render("  [enter] expense  [i] income  [T] transfer  [I] invest  [n] skip"))
+		}
 	}
-	if end < len(m.descriptions) {
-		fmt.Fprintf(&left, "  ↓ %d more\n", len(m.descriptions)-end)
+	if end < len(m.txs) {
+		fmt.Fprintf(&left, "  ↓ %d more\n", len(m.txs)-end)
 	}
 
 	if m.picking {
@@ -164,11 +206,11 @@ func (m ReviewModel) View() string {
 	}
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(56).Render(left.String()),
+		lipgloss.NewStyle().Width(68).Render(left.String()),
 		lipgloss.NewStyle().Width(30).Render(right.String()),
 	)
 
-	hint := "\n  ↑/↓ navigate   enter category   i income   x transfer   v investment   n no category\n" + globalHint()
+	hint := "\n  ↑/↓ navigate   enter expense   i income   T transfer   I investment   n skip\n" + globalHint("review")
 	if m.picking {
 		hint = "\n  ↑/↓ navigate   enter confirm   esc cancel"
 	}
@@ -176,12 +218,12 @@ func (m ReviewModel) View() string {
 	return body + hint
 }
 
-func (m ReviewModel) SetDescriptions(descriptions []string) ReviewModel {
-	m.descriptions = descriptions
-	if len(descriptions) == 0 {
+func (m ReviewModel) SetDescriptions(txs []domain.Transaction) ReviewModel {
+	m.txs = txs
+	if len(txs) == 0 {
 		m.cursor = 0
-	} else if m.cursor >= len(descriptions) {
-		m.cursor = len(descriptions) - 1
+	} else if m.cursor >= len(txs) {
+		m.cursor = len(txs) - 1
 	}
 	return m
 }

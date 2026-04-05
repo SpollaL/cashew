@@ -75,6 +75,10 @@ func (m CategoriesModel) Update(msg tea.Msg) (CategoriesModel, tea.Cmd) {
 		if m.rowCursor < len(m.pivot.categories)-1 {
 			m.rowCursor++
 		}
+	case "g":
+		m.rowCursor = 0
+	case "G":
+		m.rowCursor = len(m.pivot.categories) - 1
 	case "left", "h":
 		if m.colCursor > 0 {
 			m.colCursor--
@@ -212,10 +216,17 @@ func (m CategoriesModel) View() string {
 		}
 
 		// Total and Avg columns (not selectable)
+		// Average over periods where the category had any spend, not all periods.
 		total := m.pivot.catTotals[cat]
 		avg := 0.0
-		if nPeriods > 0 {
-			avg = total / float64(nPeriods)
+		activePeriods := 0
+		for _, p := range m.pivot.periods {
+			if m.pivot.data[cat][p.Label] > 0 {
+				activePeriods++
+			}
+		}
+		if activePeriods > 0 {
+			avg = total / float64(activePeriods)
 		}
 		suffix := fmt.Sprintf("%*.0f€%*.0f€", colW-1, total, colW-1, avg)
 		if isSelectedRow {
@@ -253,7 +264,7 @@ func (m CategoriesModel) View() string {
 	}
 
 	sb.WriteString("\n  ↑/↓/←/→ navigate   enter drill into transactions   a y M w d granularity\n")
-	sb.WriteString(globalHint() + "\n")
+	sb.WriteString(globalHint("categories") + "\n")
 	return sb.String()
 }
 

@@ -61,6 +61,35 @@ func (m SummaryModel) Update(msg tea.Msg) (SummaryModel, tea.Cmd) {
 				m.offset++
 			}
 		}
+	case "pgup":
+		m.cursor -= m.pageSize()
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		m.offset = m.cursor
+	case "pgdown":
+		last := len(m.summaries) - 1
+		m.cursor += m.pageSize()
+		if m.cursor > last {
+			m.cursor = last
+		}
+		if m.cursor >= m.offset+m.pageSize() {
+			m.offset = m.cursor - m.pageSize() + 1
+		}
+	case "g":
+		m.cursor = 0
+		m.offset = 0
+	case "G":
+		m.cursor = len(m.summaries) - 1
+		m.offset = m.cursor - m.pageSize() + 1
+		if m.offset < 0 {
+			m.offset = 0
+		}
+	case "enter":
+		if len(m.summaries) > 0 {
+			p := m.summaries[m.cursor].Period
+			return m, func() tea.Msg { return DrillDownMsg{Category: "", Period: &p} }
+		}
 	case "a":
 		return m, func() tea.Msg { return GranularityChangedMsg{domain.AllTime} }
 	case "y":
@@ -97,24 +126,32 @@ func (m SummaryModel) View() string {
 		}
 		net := lipgloss.NewStyle().Foreground(netColor).Render(fmt.Sprintf("%10.2f", s.Net))
 
+		income := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render(fmt.Sprintf("%10.2f", s.Income))
+		expenses := lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render(fmt.Sprintf("%10.2f", s.Expenses))
+
 		prefix := "  "
-		rowStyle := lipgloss.NewStyle()
-		if idx == m.cursor {
+		isBold := idx == m.cursor
+		if isBold {
 			prefix = "> "
-			rowStyle = rowStyle.Bold(true)
 		}
 
-		row := fmt.Sprintf("%s%-12s  %10.2f  %10.2f  %12.2f  %s",
-			prefix, s.Period.Label, s.Income, s.Expenses, s.Investments, net)
-		sb.WriteString(rowStyle.Render(row) + "\n")
+		label := fmt.Sprintf("%-12s", s.Period.Label)
+		invStr := fmt.Sprintf("%12.2f", s.Investments)
+		if isBold {
+			label = lipgloss.NewStyle().Bold(true).Render(label)
+			invStr = lipgloss.NewStyle().Bold(true).Render(invStr)
+		}
+		row := fmt.Sprintf("%s%s  %s  %s  %s  %s",
+			prefix, label, income, expenses, invStr, net)
+		sb.WriteString(row + "\n")
 	}
 
 	if len(m.summaries) > m.pageSize() {
 		fmt.Fprintf(&sb, "\n  row %d/%d  ↑/↓ scroll\n", m.cursor+1, len(m.summaries))
 	}
 
-	sb.WriteString("\n  a all-time   y yearly   M monthly   w weekly   d daily   ↑/↓ scroll\n")
-	sb.WriteString(globalHint() + "\n")
+	sb.WriteString("\n  a all-time   y yearly   M monthly   w weekly   d daily   ↑/↓ scroll   enter drill into transactions\n")
+	sb.WriteString(globalHint("summary") + "\n")
 	return sb.String()
 }
 

@@ -90,7 +90,7 @@ func TestUncategorised_ReturnsUncategorisedExpenses(t *testing.T) {
 
 	got := rules.Uncategorised(txs, nil)
 
-	if len(got) != 1 || got[0] != "Mercadona" {
+	if len(got) != 1 || got[0].Description != "Mercadona" {
 		t.Errorf("got %v, want [Mercadona]", got)
 	}
 }

@@ -3,6 +3,7 @@ package views
 import (
 	"cashew/internal/domain"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,9 +27,10 @@ type TransactionsModel struct {
 	offset        int  // first visible row
 	height        int
 	editing       bool
-	editSection   int // 0 = type, 1 = category
-	editCursor    int // index into editTypes
-	editCatCursor int // 0 = (none), 1..N = buckets index
+	searching     bool // free-text search input active
+	editSection   int  // 0 = type, 1 = category
+	editCursor    int  // index into editTypes
+	editCatCursor int  // 0 = (none), 1..N = buckets index
 }
 
 type txFilter struct {
@@ -41,12 +43,18 @@ type txFilter struct {
 	section     int
 	typeCursor  int
 	catCursor   int
+	text        string // free-text search on description
 }
 
 var allTypes = []string{"all", "expense", "income", "investment", "transfer"}
 
 func NewTransactions(txs []domain.Transaction, buckets []string) TransactionsModel {
-	return TransactionsModel{all: txs, buckets: buckets}
+	sorted := make([]domain.Transaction, len(txs))
+	copy(sorted, txs)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Date.After(sorted[j].Date)
+	})
+	return TransactionsModel{all: sorted, buckets: buckets}
 }
 
 func (m TransactionsModel) SetSize(height int) TransactionsModel {
@@ -79,6 +87,7 @@ func (m TransactionsModel) SetCellFilter(category string, p domain.Period) Trans
 
 func (m TransactionsModel) ClearFilter() TransactionsModel {
 	m.filter = txFilter{}
+	m.searching = false
 	m.cursor = 0
 	m.offset = 0
 	return m
@@ -91,6 +100,9 @@ func (m TransactionsModel) Update(msg tea.Msg) (TransactionsModel, tea.Cmd) {
 	}
 	if m.editing {
 		return m.updateEditing(keyMsg)
+	}
+	if m.searching {
+		return m.updateSearching(keyMsg)
 	}
 	if m.filter.open {
 		return m.updateFilter(keyMsg)
@@ -117,6 +129,30 @@ func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, te
 				m.offset = m.cursor - pageSize + 1
 			}
 		}
+	case "pgup":
+		m.cursor -= pageSize
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		m.offset = m.cursor
+	case "pgdown":
+		last := len(filtered) - 1
+		m.cursor += pageSize
+		if m.cursor > last {
+			m.cursor = last
+		}
+		if m.cursor >= m.offset+pageSize {
+			m.offset = m.cursor - pageSize + 1
+		}
+	case "g":
+		m.cursor = 0
+		m.offset = 0
+	case "G":
+		m.cursor = len(filtered) - 1
+		m.offset = m.cursor - pageSize + 1
+		if m.offset < 0 {
+			m.offset = 0
+		}
 	case "e":
 		if len(filtered) > 0 {
 			tx := filtered[m.cursor]
@@ -125,6 +161,8 @@ func (m TransactionsModel) updateBrowsing(msg tea.KeyMsg) (TransactionsModel, te
 			m.editCursor = indexOfTxType(tx.Type)
 			m.editCatCursor = indexOfCat(tx.Category, m.buckets)
 		}
+	case "/":
+		m.searching = true
 	case "f":
 		m.filter.open = true
 		m.filter.section = 0
@@ -233,6 +271,29 @@ func (m TransactionsModel) updateFilter(msg tea.KeyMsg) (TransactionsModel, tea.
 	return m, nil
 }
 
+func (m TransactionsModel) updateSearching(msg tea.KeyMsg) (TransactionsModel, tea.Cmd) {
+	switch msg.String() {
+	case "enter", "esc":
+		m.searching = false
+		m.cursor = 0
+		m.offset = 0
+	case "backspace", "ctrl+h":
+		if len(m.filter.text) > 0 {
+			m.filter.text = m.filter.text[:len(m.filter.text)-1]
+			m.cursor = 0
+			m.offset = 0
+		}
+	default:
+		// Accept printable single characters
+		if len(msg.String()) == 1 {
+			m.filter.text += msg.String()
+			m.cursor = 0
+			m.offset = 0
+		}
+	}
+	return m, nil
+}
+
 func (m TransactionsModel) View() string {
 	var sb strings.Builder
 	filtered := m.filtered()
@@ -241,6 +302,11 @@ func (m TransactionsModel) View() string {
 	filterDesc := m.filterDescription()
 	fmt.Fprintf(&sb, "\n  %s  %s  (%d shown)\n\n",
 		bold.Render("Transactions"), filterDesc, len(filtered))
+
+	if m.searching {
+		cursor := lipgloss.NewStyle().Bold(true).Render("█")
+		fmt.Fprintf(&sb, "  Search: %s%s\n\n", m.filter.text, cursor)
+	}
 
 	if m.filter.open {
 		sb.WriteString(m.renderFilterPanel())
@@ -330,9 +396,9 @@ func (m TransactionsModel) View() string {
 		lipgloss.NewStyle().Foreground(netColor).Bold(true).Render(fmt.Sprintf("%8.2f", net)),
 	)
 
-	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit   f filter   esc clear / back\n",
+	fmt.Fprintf(&sb, "\n  %d–%d of %d   ↑/↓ navigate   e edit   f filter   / search   esc clear / back\n",
 		start+1, end, len(filtered))
-	sb.WriteString(globalHint() + "\n")
+	sb.WriteString(globalHint("transactions") + "\n")
 
 	return sb.String()
 }
@@ -346,7 +412,27 @@ func (m TransactionsModel) renderEditPanel(filtered []domain.Transaction) string
 		if len(desc) > 50 {
 			desc = desc[:47] + "..."
 		}
-		fmt.Fprintf(&sb, "  Editing: %s\n\n", lipgloss.NewStyle().Bold(true).Render(desc))
+		bold := lipgloss.NewStyle().Bold(true)
+		faint := lipgloss.NewStyle().Faint(true)
+		var amountColor lipgloss.Color
+		switch tx.Type {
+		case domain.Income:
+			amountColor = "2"
+		case domain.Expense:
+			amountColor = "1"
+		case domain.Investment:
+			amountColor = "4"
+		default:
+			amountColor = "7"
+		}
+		amount := lipgloss.NewStyle().Foreground(amountColor).Render(fmt.Sprintf("%.2f %s", tx.Amount, tx.Currency))
+		fmt.Fprintf(&sb, "  %s\n", bold.Render(desc))
+		fmt.Fprintf(&sb, "  %s   %s   %s   %s\n\n",
+			amount,
+			faint.Render(tx.Date.Format("2006-01-02")),
+			faint.Render(string(tx.Bank)),
+			faint.Render(string(tx.Type)),
+		)
 	}
 
 	activeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
@@ -456,10 +542,11 @@ func (m TransactionsModel) renderFilterPanel() string {
 
 func (m TransactionsModel) filtered() []domain.Transaction {
 	f := m.filter
-	if f.txType == "" && f.category == "" && f.dateFrom.IsZero() {
+	if f.txType == "" && f.category == "" && f.dateFrom.IsZero() && f.text == "" {
 		return m.all
 	}
 	var out []domain.Transaction
+	textLower := strings.ToLower(f.text)
 	for _, tx := range m.all {
 		if f.txType != "" && string(tx.Type) != f.txType {
 			continue
@@ -471,6 +558,9 @@ func (m TransactionsModel) filtered() []domain.Transaction {
 			continue
 		}
 		if !f.dateTo.IsZero() && !tx.Date.Before(f.dateTo) {
+			continue
+		}
+		if textLower != "" && !strings.Contains(strings.ToLower(tx.Description), textLower) {
 			continue
 		}
 		out = append(out, tx)
@@ -488,6 +578,9 @@ func (m TransactionsModel) filterDescription() string {
 	}
 	if m.filter.periodLabel != "" {
 		parts = append(parts, fmt.Sprintf("[%s]", m.filter.periodLabel))
+	}
+	if m.filter.text != "" {
+		parts = append(parts, fmt.Sprintf("[/%s]", m.filter.text))
 	}
 	if len(parts) == 0 {
 		return lipgloss.NewStyle().Faint(true).Render("[all]")

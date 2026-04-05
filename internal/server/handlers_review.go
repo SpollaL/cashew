@@ -28,7 +28,7 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 
 	items := make([]reviewItem, len(descs))
 	for i, d := range descs {
-		items[i] = reviewItem{Description: d}
+		items[i] = reviewItem{Description: d.Description}
 	}
 
 	s.render(w, "review", reviewData{
