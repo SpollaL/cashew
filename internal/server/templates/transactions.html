@@ -6,7 +6,7 @@
     <label>
       Type
       <select name="type">
-        <option value=""      {{if eq .Filter.Type ""}}selected{{end}}>All</option>
+        <option value=""           {{if eq .Filter.Type ""}}selected{{end}}>All</option>
         <option value="expense"    {{if eq .Filter.Type "expense"}}selected{{end}}>Expense</option>
         <option value="income"     {{if eq .Filter.Type "income"}}selected{{end}}>Income</option>
         <option value="investment" {{if eq .Filter.Type "investment"}}selected{{end}}>Investment</option>
@@ -31,50 +31,52 @@
       <input type="date" name="to" value="{{.Filter.To}}">
     </label>
   </div>
-  <button type="submit">Filter</button>
-  <a href="/transactions" role="button" class="secondary">Clear</a>
+  <div style="display:flex; gap:0.5rem;">
+    <button type="submit" style="width:auto">Filter</button>
+    <a href="/transactions" role="button" class="secondary outline" style="width:auto">Clear</a>
+  </div>
 </form>
 
 {{if .Rows}}
-<figure>
-  <table>
+<div style="overflow-x:auto; width:100%;">
+  <table style="min-width:600px;">
     <thead>
       <tr>
-        <th>Date</th>
+        <th style="white-space:nowrap; width:7rem;">Date</th>
         <th>Description</th>
-        <th scope="col" style="text-align:right">Amount</th>
-        <th>Currency</th>
-        <th>Bank</th>
-        <th>Type</th>
-        <th>Category</th>
+        <th style="text-align:right; width:8rem;">Amount</th>
+        <th style="width:6rem;">Type</th>
+        <th style="width:8rem;">Category</th>
       </tr>
     </thead>
     <tbody>
       {{range .Rows}}
       <tr>
-        <td>{{.Date}}</td>
-        <td>{{.Description}}</td>
-        <td style="text-align:right" class="{{.TypeClass}}">{{.Amount}}</td>
-        <td>{{.Currency}}</td>
-        <td>{{.Bank}}</td>
-        <td class="{{.TypeClass}}">{{.Type}}</td>
-        <td>{{.Category}}</td>
+        <td style="white-space:nowrap; font-size:0.85em; color:#666;">{{.Date}}</td>
+        <td style="font-size:0.9em;">{{.Description}}</td>
+        <td style="text-align:right; white-space:nowrap;" class="{{.TypeClass}}">{{.Amount}}</td>
+        <td class="{{.TypeClass}}" style="font-size:0.85em; white-space:nowrap;">{{.Type}}</td>
+        <td style="font-size:0.85em;">{{.Category}}</td>
       </tr>
       {{end}}
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="2">Totals</td>
-        <td style="text-align:right" class="income">in {{printf "%.2f" .Totals.Income}}</td>
-        <td style="text-align:right" class="expense">out {{printf "%.2f" .Totals.Expenses}}</td>
-        <td style="text-align:right" class="investment">inv {{printf "%.2f" .Totals.Investments}}</td>
-        <td colspan="2" style="text-align:right" class="{{if lt .Totals.Net 0.0}}negative{{else}}positive{{end}}">
-          net {{printf "%.2f" .Totals.Net}}
+        <td colspan="2"><strong>Totals</strong></td>
+        <td style="text-align:right;">
+          <span class="income">↑ {{printf "%.2f" .Totals.Income}}</span><br>
+          <span class="expense">↓ {{printf "%.2f" .Totals.Expenses}}</span><br>
+          <span class="investment">→ {{printf "%.2f" .Totals.Investments}}</span>
+        </td>
+        <td colspan="2">
+          <span class="{{if lt .Totals.Net 0.0}}negative{{else}}positive{{end}}">
+            net {{printf "%.2f" .Totals.Net}}
+          </span>
         </td>
       </tr>
     </tfoot>
   </table>
-</figure>
+</div>
 {{else}}
 <p>No transactions match the current filter.</p>
 {{end}}
