@@ -5,6 +5,8 @@
 
 Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank, categorises transactions with a rule engine, and presents income, expenses and investments across configurable time granularities.
 
+![demo](docs/demo.gif)
+
 ## Supported banks
 
 | Bank | Format | Notes |
@@ -47,9 +49,33 @@ Requires Go 1.24+.
 # then open http://localhost:8080 in any browser
 ```
 
-Place your bank exports in a `data/` directory (gitignored). The app detects each bank automatically.
+Place your bank exports in a `data/` directory (gitignored). The app detects each bank automatically and deduplicates transactions when date ranges overlap across files.
 
-### Keyboard shortcuts
+## Workflow
+
+On first run, cashew opens the **review queue** — a list of every transaction it couldn't automatically categorise. Work through it to teach the app your spending patterns:
+
+1. Select a transaction and press `enter` to assign a category (marks it as an expense).
+2. Press `i` if it is income, `T` if it is an internal transfer, `I` if it is an investment.
+3. Each action saves a rule to `rules.toml` so future transactions with the same description are categorised automatically.
+4. Press `n` to skip a transaction without saving a rule.
+
+Once the queue is empty, switch to the **summary** (`s`) or **categories** (`c`) views to explore your finances.
+
+## Transaction types
+
+cashew tracks four transaction types. Only **expenses** and **income** flow through to the summary — the others are intentionally excluded so your numbers stay accurate.
+
+| Type | Meaning | Counted in summary? |
+|------|---------|-------------------|
+| Expense | Money spent | Yes |
+| Income | Money received (salary, freelance, etc.) | Yes |
+| Transfer | Internal move between your own accounts — e.g. topping up Revolut from your current account. No money enters or leaves your finances. | No |
+| Investment | Money moved into a portfolio or savings product | No |
+
+> Mark a transaction as **transfer** whenever money moves between accounts you own. If you don't, the same euros will appear as both an outgoing expense and an incoming deposit, double-counting them in the summary.
+
+## Keyboard shortcuts
 
 | Key | Action |
 |-----|--------|
@@ -82,11 +108,11 @@ Place your bank exports in a `data/` directory (gitignored). The app detects eac
 
 | Key | Action |
 |-----|--------|
-| `enter` | Pick category (expense) |
+| `enter` | Pick category (marks as expense) |
 | `i` | Mark as income |
 | `T` | Mark as transfer |
 | `I` | Mark as investment |
-| `n` | No category (dismiss) |
+| `n` | Dismiss without saving a rule |
 
 ## Rules
 
