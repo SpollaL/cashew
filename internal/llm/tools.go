@@ -17,6 +17,13 @@ type Tools struct {
 	GetMonthlySummary            func(months []string) []string
 	GetCategories                func() []string
 	SaveCategoryRule             func(pattern, category string) error
+	BulkSaveCategoryRules        func(rules []CategoryRule) (saved int, err error)
+}
+
+// CategoryRule is a single pattern → category mapping used by BulkSaveCategoryRules.
+type CategoryRule struct {
+	Pattern  string
+	Category string
 }
 
 // schemas returns the Ollama tool definitions so the model knows what tools exist.
@@ -51,7 +58,34 @@ func (t Tools) schemas() api.Tools {
 		Description: "Category to assign to matching transactions, e.g. 'coffee'",
 	})
 
+	bulkRuleItemProps := api.NewToolPropertiesMap()
+	bulkRuleItemProps.Set("pattern", api.ToolProperty{
+		Type:        api.PropertyType{"string"},
+		Description: "Keyword to match in transaction description",
+	})
+	bulkRuleItemProps.Set("category", api.ToolProperty{
+		Type:        api.PropertyType{"string"},
+		Description: "Category to assign",
+	})
+	bulkSaveProps := api.NewToolPropertiesMap()
+	bulkSaveProps.Set("rules", api.ToolProperty{
+		Type:        api.PropertyType{"array"},
+		Description: "List of {pattern, category} objects to save as categorization rules",
+	})
+
 	return api.Tools{
+		{
+			Type: "function",
+			Function: api.ToolFunction{
+				Name:        "bulk_save_category_rules",
+				Description: "Save multiple categorization rules at once. Use this when categorizing many transactions — pass all rules in a single call instead of calling save_category_rule repeatedly.",
+				Parameters: api.ToolFunctionParameters{
+					Type:       "object",
+					Properties: bulkSaveProps,
+					Required:   []string{"rules"},
+				},
+			},
+		},
 		{
 			Type: "function",
 			Function: api.ToolFunction{

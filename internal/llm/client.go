@@ -11,10 +11,19 @@ import (
 	"github.com/ollama/ollama/api"
 )
 
-// LLMResponseMsg is returned when the LLM produces a final answer.
-type LLMResponseMsg struct {
+// LLMStreamStartMsg is returned by Ask; it carries the channel that delivers
+// subsequent stream events (LLMStreamMsg / LLMStreamDoneMsg / LLMErrorMsg).
+type LLMStreamStartMsg struct {
+	Ch <-chan tea.Msg
+}
+
+// LLMStreamMsg carries one chunk of text from the model's final response.
+type LLMStreamMsg struct {
 	Content string
 }
+
+// LLMStreamDoneMsg signals the stream finished successfully.
+type LLMStreamDoneMsg struct{}
 
 // LLMErrorMsg is returned when the LLM call fails.
 type LLMErrorMsg struct {
@@ -28,12 +37,11 @@ CRITICAL: You must call tools to act. Never describe what you would do — alway
 When the user asks to categorize transactions you MUST follow this exact sequence:
 1. Call get_categories to see available categories.
 2. Call get_uncategorized_transactions to get the list.
-3. For EACH transaction in the list, call save_category_rule immediately with:
-   - pattern: a short keyword from the description (e.g. "Amazon", "Starbucks")
-   - category: the most fitting category from the list
-4. After ALL rules are saved, reply with a short summary of what was categorized.
+3. Call bulk_save_category_rules ONCE with ALL rules as an array — do NOT call save_category_rule in a loop.
+   For each transaction pick a short keyword from the description as pattern and the best matching category.
+4. Reply with a short summary of what was categorized.
 
-Do NOT produce any prose, tables, or analysis before all save_category_rule calls are done.
+Do NOT produce any prose, tables, or analysis before bulk_save_category_rules is called.
 Do NOT ask the user for confirmation. Just call the tools and report when finished.`
 
 // Client manages the Ollama conversation and executes tool calls.
@@ -45,8 +53,6 @@ type Client struct {
 }
 
 // NewClient creates a Client connected to the local Ollama instance.
-// It never fails: if OLLAMA_HOST is unset or malformed it falls back to
-// the default http://localhost:11434.
 func NewClient(model string, tools Tools) *Client {
 	c, err := api.ClientFromEnvironment()
 	if err != nil {
@@ -63,56 +69,86 @@ func NewClient(model string, tools Tools) *Client {
 	}
 }
 
-// Ask appends the user question to history and returns a tea.Cmd that drives
-// the conversation loop in a goroutine: send → tool calls → send → … → answer.
-func (c *Client) Ask(question string) tea.Cmd {
+// WaitForStream returns a Cmd that reads the next message from ch.
+func WaitForStream(ch <-chan tea.Msg) tea.Cmd {
 	return func() tea.Msg {
-		c.history = append(c.history, api.Message{Role: "user", Content: question})
+		return <-ch
+	}
+}
 
-		for {
-			msg, err := c.roundtrip()
-			if err != nil {
-				return LLMErrorMsg{Err: err}
-			}
+// Ask appends the user question to history and returns a Cmd that immediately
+// delivers LLMStreamStartMsg. Content tokens arrive as LLMStreamMsg events,
+// terminated by LLMStreamDoneMsg or LLMErrorMsg.
+func (c *Client) Ask(question string) tea.Cmd {
+	ch := make(chan tea.Msg, 50)
+	return func() tea.Msg {
+		go c.stream(question, ch)
+		return LLMStreamStartMsg{Ch: ch}
+	}
+}
 
-			// No tool calls → final answer.
-			if len(msg.ToolCalls) == 0 {
-				c.history = append(c.history, api.Message{Role: "assistant", Content: msg.Content})
-				return LLMResponseMsg{Content: msg.Content}
-			}
+// stream runs the tool-calling loop in a goroutine, writing content chunks and
+// terminal events to ch.
+func (c *Client) stream(question string, ch chan<- tea.Msg) {
+	c.history = append(c.history, api.Message{Role: "user", Content: question})
 
-			// Record the assistant turn that contains the tool calls.
+	for {
+		msg, err := c.roundtrip(ch)
+		if err != nil {
+			ch <- LLMErrorMsg{Err: err}
+			close(ch)
+			return
+		}
+
+		// No tool calls → final answer was already streamed to ch.
+		if len(msg.ToolCalls) == 0 {
+			c.history = append(c.history, api.Message{Role: "assistant", Content: msg.Content})
+			ch <- LLMStreamDoneMsg{}
+			close(ch)
+			return
+		}
+
+		// Record the assistant turn with tool calls and execute each one.
+		c.history = append(c.history, api.Message{
+			Role:      "assistant",
+			ToolCalls: msg.ToolCalls,
+		})
+		for _, call := range msg.ToolCalls {
+			result := c.execute(call)
 			c.history = append(c.history, api.Message{
-				Role:      "assistant",
-				ToolCalls: msg.ToolCalls,
+				Role:    "tool",
+				Content: result,
 			})
-
-			// Execute each tool and feed the results back.
-			for _, call := range msg.ToolCalls {
-				result := c.execute(call)
-				c.history = append(c.history, api.Message{
-					Role:    "tool",
-					Content: result,
-				})
-			}
 		}
 	}
 }
 
-// roundtrip sends the current history to Ollama and returns the response message.
-func (c *Client) roundtrip() (api.Message, error) {
-	stream := false
-	var response api.Message
+// roundtrip sends the current history to Ollama with streaming enabled.
+// Content tokens are forwarded to ch as LLMStreamMsg events.
+// Tool-call rounds produce no content, so nothing is sent on those rounds.
+func (c *Client) roundtrip(ch chan<- tea.Msg) (api.Message, error) {
+	stream := true
+	var contentBuf strings.Builder
+	var toolCalls []api.ToolCall
+
 	err := c.ollama.Chat(context.Background(), &api.ChatRequest{
 		Model:    c.model,
 		Messages: c.history,
 		Tools:    c.tools.schemas(),
 		Stream:   &stream,
 	}, func(resp api.ChatResponse) error {
-		response = resp.Message
+		if resp.Message.Content != "" {
+			contentBuf.WriteString(resp.Message.Content)
+			ch <- LLMStreamMsg{Content: resp.Message.Content}
+		}
+		toolCalls = append(toolCalls, resp.Message.ToolCalls...)
 		return nil
 	})
-	return response, err
+
+	return api.Message{
+		Content:   contentBuf.String(),
+		ToolCalls: toolCalls,
+	}, err
 }
 
 // execute dispatches a tool call to the right callback and returns a result string.
@@ -120,6 +156,33 @@ func (c *Client) execute(call api.ToolCall) string {
 	args := call.Function.Arguments
 
 	switch call.Function.Name {
+	case "bulk_save_category_rules":
+		v, ok := args.Get("rules")
+		if !ok {
+			return "Error: rules parameter is required."
+		}
+		items, ok := v.([]any)
+		if !ok {
+			return "Error: rules must be an array."
+		}
+		var rules []CategoryRule
+		for _, item := range items {
+			m, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			p, _ := m["pattern"].(string)
+			cat, _ := m["category"].(string)
+			if p != "" && cat != "" {
+				rules = append(rules, CategoryRule{Pattern: p, Category: cat})
+			}
+		}
+		saved, err := c.tools.BulkSaveCategoryRules(rules)
+		if err != nil {
+			return fmt.Sprintf("Saved %d rules, then hit an error: %v", saved, err)
+		}
+		return fmt.Sprintf("Saved %d rules.", saved)
+
 	case "get_uncategorized_transactions":
 		rows := c.tools.GetUncategorizedTransactions()
 		if len(rows) == 0 {

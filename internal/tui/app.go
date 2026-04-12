@@ -72,6 +72,7 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, 
 		GetMonthlySummary:            app.getMonthlySummary,
 		GetCategories:                app.getCategories,
 		SaveCategoryRule:             app.saveCategoryRuleSync,
+		BulkSaveCategoryRules:        app.bulkSaveCategoryRules,
 	})
 	app.chat = views.NewChat(llmClient)
 
@@ -298,6 +299,16 @@ func (a App) getCategories() []string {
 func (a App) saveCategoryRuleSync(pattern, category string) error {
 	r := domain.Rule{Pattern: pattern, Category: category, Type: domain.Expense}
 	return rules.SaveRule(a.rulesPath, r)
+}
+
+func (a App) bulkSaveCategoryRules(categoryRules []llm.CategoryRule) (int, error) {
+	for i, cr := range categoryRules {
+		r := domain.Rule{Pattern: cr.Pattern, Category: cr.Category, Type: domain.Expense}
+		if err := rules.SaveRule(a.rulesPath, r); err != nil {
+			return i, err
+		}
+	}
+	return len(categoryRules), nil
 }
 
 // ── Refresh ───────────────────────────────────────────────────────────────────

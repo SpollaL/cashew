@@ -24,6 +24,7 @@ type ChatModel struct {
 	vp       viewport.Model
 	history  []chatEntry
 	thinking bool
+	streamCh <-chan tea.Msg
 	width    int
 	height   int
 }
@@ -69,11 +70,30 @@ func (m ChatModel) Update(msg tea.Msg) (ChatModel, tea.Cmd) {
 			return m, m.client.Ask(question)
 		}
 
-	case llm.LLMResponseMsg:
-		m.history = append(m.history, chatEntry{role: "assistant", content: msg.Content})
-		m.thinking = false
+	case llm.LLMStreamStartMsg:
+		m.streamCh = msg.Ch
+		return m, llm.WaitForStream(m.streamCh)
+
+	case llm.LLMStreamMsg:
+		if m.thinking {
+			// First content chunk: clear the thinking indicator and open a new entry.
+			m.thinking = false
+			m.history = append(m.history, chatEntry{role: "assistant", content: msg.Content})
+		} else {
+			last := len(m.history) - 1
+			if last >= 0 && m.history[last].role == "assistant" {
+				m.history[last].content += msg.Content
+			} else {
+				m.history = append(m.history, chatEntry{role: "assistant", content: msg.Content})
+			}
+		}
 		m.vp.SetContent(m.renderHistory())
 		m.vp.GotoBottom()
+		return m, llm.WaitForStream(m.streamCh)
+
+	case llm.LLMStreamDoneMsg:
+		m.thinking = false
+		m.streamCh = nil
 		return m, nil
 
 	case llm.LLMErrorMsg:
@@ -82,6 +102,7 @@ func (m ChatModel) Update(msg tea.Msg) (ChatModel, tea.Cmd) {
 			content: fmt.Sprintf("error: %v", msg.Err),
 		})
 		m.thinking = false
+		m.streamCh = nil
 		m.vp.SetContent(m.renderHistory())
 		m.vp.GotoBottom()
 		return m, nil
