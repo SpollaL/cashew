@@ -101,7 +101,7 @@ func (t Tools) schemas() api.Tools {
 			Type: "function",
 			Function: api.ToolFunction{
 				Name:        "get_transactions",
-				Description: "Fetch individual transactions. Optionally filter by category, month (YYYY-MM), or type.",
+				Description: "Fetch individual transactions with their exact amounts and descriptions. Use this to find the biggest or smallest expenses, list specific purchases, or drill into details. Optionally filter by category, month (YYYY-MM), or type (expense/income/investment).",
 				Parameters: api.ToolFunctionParameters{
 					Type:       "object",
 					Properties: getTxProps,
@@ -112,7 +112,7 @@ func (t Tools) schemas() api.Tools {
 			Type: "function",
 			Function: api.ToolFunction{
 				Name:        "get_monthly_summary",
-				Description: "Get monthly income/expense/investment summaries. Pass specific months or omit for all.",
+				Description: "Get high-level totals per month: total income, total expenses, total investments. Use this for questions like 'how much did I spend in January' or 'show me all months'. Do NOT use this to find individual transactions or biggest expenses — use get_transactions for that.",
 				Parameters: api.ToolFunctionParameters{
 					Type:       "object",
 					Properties: summaryProps,
