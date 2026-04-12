@@ -22,6 +22,7 @@ Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank
 - **Review queue**: triage uncategorised expenses without leaving the terminal
 - **Category pivot table**: drill down from any cell into filtered transactions
 - **Granularities**: daily / weekly / monthly / yearly / all-time with a single keypress
+- **AI chat**: ask natural-language questions about your finances via a local Ollama model
 
 ## Installation
 
@@ -40,6 +41,7 @@ Requires Go 1.24+.
 
 ```bash
 ./cashew data/*.csv data/*.xlsx
+./cashew -model gemma3 data/*.csv    # choose a specific Ollama model for chat
 ```
 
 **Web UI** (handy on mobile)
@@ -83,6 +85,7 @@ cashew tracks four transaction types. Only **expenses** and **income** flow thro
 | `c` | Categories pivot |
 | `t` | Transactions view |
 | `r` | Review queue |
+| `/` | AI chat |
 | `q` | Quit |
 
 **Summary / Categories**
@@ -113,6 +116,53 @@ cashew tracks four transaction types. Only **expenses** and **income** flow thro
 | `T` | Mark as transfer |
 | `I` | Mark as investment |
 | `n` | Dismiss without saving a rule |
+
+**Chat**
+
+| Key | Action |
+|-----|--------|
+| `↑` `↓` `pgup` `pgdn` | Scroll conversation history |
+| `enter` | Send message |
+| `esc` | Leave chat, return to previous view |
+
+## AI chat
+
+Press `/` from any view to open the chat panel. Type a question and press `enter`.
+
+**Prerequisites**
+
+1. Install [Ollama](https://ollama.com) and start it (`ollama serve`).
+2. Pull a model — `gemma3` is the default:
+   ```bash
+   ollama pull gemma3
+   ```
+3. Pass a different model with the `-model` flag if needed:
+   ```bash
+   ./cashew -model llama3.2 data/*.csv
+   ```
+
+The app connects to Ollama at `http://localhost:11434` by default. Set `OLLAMA_HOST` to override.
+
+**Example questions**
+
+- *"How much did I spend on groceries last month?"*
+- *"What were my biggest expenses in January?"*
+- *"Categorize all my uncategorized transactions."*
+- *"Show me a summary of the last 3 months."*
+
+The model has access to four tools it can call autonomously:
+
+| Tool | What it does |
+|------|-------------|
+| `get_uncategorized_transactions` | Fetch transactions with no category assigned |
+| `get_transactions` | Fetch transactions, optionally filtered by category, month, or type |
+| `get_monthly_summary` | Income / expenses / investments per month |
+| `get_categories` | List all known spending categories |
+| `save_category_rule` | Persist a new pattern → category rule to `rules.toml` |
+
+> **Note:** `save_category_rule` writes directly to `rules.toml` but the in-memory view is not refreshed until you restart the app or navigate through the review queue. The rules will be applied correctly on the next launch.
+
+> **Model compatibility:** multi-step tool calling works best with models that support function calling well — `gemma3`, `llama3.1`, and `qwen2.5` are good choices. Smaller models may summarise instead of invoking tools; try a larger variant if that happens.
 
 ## Rules
 
@@ -147,6 +197,7 @@ internal/
   parser/          bank-specific parsers (Revolut, BBVA) + deduplication
   rules/           rule engine + TOML persistence
   ledger/          immutable, chainable filters + aggregation
-  tui/             Bubble Tea app + views (summary, categories, transactions, review)
+  llm/             Ollama client, tool schemas, and tool-calling loop
+  tui/             Bubble Tea app + views (summary, categories, transactions, review, chat)
   server/          HTTP handlers + HTML templates (summary, categories, transactions, review)
 ```

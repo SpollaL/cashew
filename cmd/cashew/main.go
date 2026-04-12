@@ -6,6 +6,7 @@ import (
 	"cashew/internal/parser"
 	"cashew/internal/rules"
 	"cashew/internal/tui"
+	"flag"
 	"fmt"
 	"os"
 
@@ -13,8 +14,11 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: cashew <file> [file2 ...]")
+	model := flag.String("model", "gemma3", "Ollama model to use for chat (e.g. gemma3, llama3.2)")
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		fmt.Fprintln(os.Stderr, "usage: cashew [-model <name>] <file> [file2 ...]")
 		os.Exit(1)
 	}
 
@@ -25,7 +29,7 @@ func main() {
 	rulesPath := "rules.toml"
 
 	var allTxs []domain.Transaction
-	for _, path := range os.Args[1:] {
+	for _, path := range flag.Args() {
 		txs, err := parser.Load(path, parsers)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error loading %s: %v\n", path, err)
@@ -45,7 +49,7 @@ func main() {
 	allTxs = rules.Apply(allTxs, rulesList)
 	l := ledger.New(allTxs)
 
-	app := tui.New(l, rulesList, buckets, rulesPath)
+	app := tui.New(l, rulesList, buckets, rulesPath, *model)
 	p := tea.NewProgram(app, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

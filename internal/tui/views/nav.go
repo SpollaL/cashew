@@ -15,6 +15,7 @@ var navViews = []struct {
 	{"c", "categories"},
 	{"t", "transactions"},
 	{"r", "review"},
+	{"/", "chat"},
 	{"q", "quit"},
 }
 

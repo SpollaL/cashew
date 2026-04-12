@@ -3,8 +3,11 @@ package tui
 import (
 	"cashew/internal/domain"
 	"cashew/internal/ledger"
+	"cashew/internal/llm"
 	"cashew/internal/rules"
 	"cashew/internal/tui/views"
+	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -16,6 +19,7 @@ const (
 	viewCategories
 	viewTransactions
 	viewReview
+	viewChat
 )
 
 type App struct {
@@ -31,12 +35,13 @@ type App struct {
 	categories   views.CategoriesModel
 	transactions views.TransactionsModel
 	review       views.ReviewModel
+	chat         views.ChatModel
 
 	width  int
 	height int
 }
 
-func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath string) App {
+func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, model string) App {
 	txs := l.All()
 	uncategorised := rules.Uncategorised(txs, rulesList)
 
@@ -48,7 +53,7 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath s
 		active = viewReview
 	}
 
-	return App{
+	app := App{
 		fullLedger:   l,
 		rulesList:    rulesList,
 		rulesPath:    rulesPath,
@@ -60,6 +65,17 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath s
 		transactions: views.NewTransactions(txs, buckets),
 		review:       views.NewReview(uncategorised, buckets),
 	}
+
+	llmClient := llm.NewClient(model, llm.Tools{
+		GetUncategorizedTransactions: app.getUncategorizedTransactions,
+		GetTransactions:              app.getTransactions,
+		GetMonthlySummary:            app.getMonthlySummary,
+		GetCategories:                app.getCategories,
+		SaveCategoryRule:             app.saveCategoryRuleSync,
+	})
+	app.chat = views.NewChat(llmClient)
+
+	return app
 }
 
 func (a App) Init() tea.Cmd { return nil }
@@ -74,11 +90,25 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.categories = a.categories.SetSize(msg.Width, msg.Height)
 		a.transactions = a.transactions.SetSize(msg.Height)
 		a.review = a.review.SetSize(msg.Height)
+		a.chat = a.chat.SetSize(msg.Width, msg.Height)
 		return a, nil
 
 	case tea.KeyMsg:
+		// ctrl+c always quits, regardless of which view is active.
+		if msg.String() == "ctrl+c" {
+			return a, tea.Quit
+		}
+		// When chat is active, nav keys must reach the text input — only esc
+		// escapes back to the previous view.
+		if a.active == viewChat {
+			if msg.String() == "esc" {
+				a.active = a.prevView
+				return a, nil
+			}
+			break
+		}
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "q":
 			return a, tea.Quit
 		case "s":
 			a.active = viewSummary
@@ -92,6 +122,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		case "r":
 			a.active = viewReview
+			return a, nil
+		case "/":
+			a.prevView = a.active
+			a.active = viewChat
 			return a, nil
 		}
 
@@ -137,6 +171,8 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.transactions, cmd = a.transactions.Update(msg)
 	case viewReview:
 		a.review, cmd = a.review.Update(msg)
+	case viewChat:
+		a.chat, cmd = a.chat.Update(msg)
 	}
 	return a, cmd
 }
@@ -151,6 +187,8 @@ func (a App) View() string {
 		return a.transactions.View()
 	case viewReview:
 		return a.review.View()
+	case viewChat:
+		return a.chat.View()
 	}
 	return ""
 }
@@ -177,6 +215,92 @@ type refreshMsg struct {
 	rulesList []domain.Rule
 	buckets   []string
 }
+
+// ── LLM tool callbacks ────────────────────────────────────────────────────────
+
+func (a App) getUncategorizedTransactions() []string {
+	var rows []string
+	for _, tx := range a.fullLedger.All() {
+		if tx.Category == "" {
+			rows = append(rows, fmt.Sprintf("%s | %8.2f %s | %s",
+				tx.Date.Format("2006-01-02"),
+				tx.Amount, tx.Currency,
+				tx.Description,
+			))
+		}
+	}
+	return rows
+}
+
+func (a App) getTransactions(filters llm.TransactionFilters) []string {
+	l := a.fullLedger
+	if filters.Type != "" {
+		switch filters.Type {
+		case "expense":
+			l = l.OnlyExpenses()
+		case "income":
+			l = l.OnlyIncome()
+		case "investment":
+			l = l.OnlyInvestments()
+		}
+	}
+	if filters.Category != "" {
+		l = l.InCategory(filters.Category)
+	}
+	if filters.Month != "" {
+		start, err := time.Parse("2006-01", filters.Month)
+		if err == nil {
+			end := start.AddDate(0, 1, 0)
+			l = l.InRange(start, end)
+		}
+	}
+
+	txs := l.All()
+	const maxRows = 50
+	if len(txs) > maxRows {
+		txs = txs[len(txs)-maxRows:]
+	}
+	rows := make([]string, len(txs))
+	for i, tx := range txs {
+		rows[i] = fmt.Sprintf("%s | %8.2f %s | %-30s | %-12s | %s",
+			tx.Date.Format("2006-01-02"),
+			tx.Amount, tx.Currency,
+			tx.Description,
+			string(tx.Type),
+			tx.Category,
+		)
+	}
+	return rows
+}
+
+func (a App) getMonthlySummary(months []string) []string {
+	summaries := a.fullLedger.Aggregate(domain.Monthly)
+	want := make(map[string]bool, len(months))
+	for _, m := range months {
+		want[m] = true
+	}
+	var rows []string
+	for _, s := range summaries {
+		if len(want) > 0 && !want[s.Period.Label] {
+			continue
+		}
+		rows = append(rows, fmt.Sprintf("%-10s  income: %8.2f  expenses: %8.2f  investments: %8.2f  net: %8.2f",
+			s.Period.Label, s.Income, s.Expenses, s.Investments, s.Net,
+		))
+	}
+	return rows
+}
+
+func (a App) getCategories() []string {
+	return a.buckets
+}
+
+func (a App) saveCategoryRuleSync(pattern, category string) error {
+	r := domain.Rule{Pattern: pattern, Category: category, Type: domain.Expense}
+	return rules.SaveRule(a.rulesPath, r)
+}
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
 
 func (a App) applyRefresh(msg refreshMsg) App {
 	txs := rules.Apply(a.fullLedger.All(), msg.rulesList)
