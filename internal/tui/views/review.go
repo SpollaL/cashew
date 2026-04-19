@@ -20,23 +20,42 @@ type RuleSavedMsg struct {
 	Type     domain.TransactionType // empty = don't change type
 }
 
-type ReviewModel struct {
-	txs            []domain.Transaction
-	cursor         int
-	offset         int // first visible row
-	height         int
-	buckets        []string
-	picking        bool
-	categoryCursor int
+var reviewTypes = []domain.TransactionType{
+	domain.Income,
+	domain.Expense,
+	domain.Transfer,
+	domain.Investment,
 }
 
-func NewReview(txs []domain.Transaction, buckets []string) ReviewModel {
-	return ReviewModel{txs: txs, buckets: buckets}
+type ReviewModel struct {
+	expenses  []domain.Transaction
+	transfers []domain.Transaction
+	tab       int // 0 = expenses, 1 = transfers
+
+	cursor         int
+	offset         int
+	height         int
+	buckets        []string
+	picking        bool // category picker (expenses tab)
+	pickingType    bool // type picker (transfers tab)
+	categoryCursor int
+	typeCursor     int
+}
+
+func NewReview(expenses, transfers []domain.Transaction, buckets []string) ReviewModel {
+	return ReviewModel{expenses: expenses, transfers: transfers, buckets: buckets}
 }
 
 func (m ReviewModel) SetSize(height int) ReviewModel {
 	m.height = height
 	return m
+}
+
+func (m ReviewModel) currentTxs() []domain.Transaction {
+	if m.tab == 0 {
+		return m.expenses
+	}
+	return m.transfers
 }
 
 func (m ReviewModel) Update(msg tea.Msg) (ReviewModel, tea.Cmd) {
@@ -45,13 +64,29 @@ func (m ReviewModel) Update(msg tea.Msg) (ReviewModel, tea.Cmd) {
 		return m, nil
 	}
 	if m.picking {
-		return m.updatePicking(keyMsg)
+		return m.updatePickingCategory(keyMsg)
+	}
+	if m.pickingType {
+		return m.updatePickingType(keyMsg)
 	}
 	return m.updateBrowsing(keyMsg)
 }
 
 func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
+	txs := m.currentTxs()
+
 	switch msg.String() {
+	case "tab":
+		other := 1 - m.tab
+		otherTxs := m.expenses
+		if other == 1 {
+			otherTxs = m.transfers
+		}
+		if len(otherTxs) > 0 {
+			m.tab = other
+			m.cursor = 0
+			m.offset = 0
+		}
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
@@ -60,7 +95,7 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 			}
 		}
 	case "down", "j":
-		if m.cursor < len(m.txs)-1 {
+		if m.cursor < len(txs)-1 {
 			m.cursor++
 			if visible := m.visibleRows(); m.cursor >= m.offset+visible {
 				m.offset = m.cursor - visible + 1
@@ -75,7 +110,7 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 		m.offset = m.cursor
 	case "pgdown":
 		visible := m.visibleRows()
-		last := len(m.txs) - 1
+		last := len(txs) - 1
 		m.cursor += visible
 		if m.cursor > last {
 			m.cursor = last
@@ -88,38 +123,46 @@ func (m ReviewModel) updateBrowsing(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 		m.offset = 0
 	case "G":
 		visible := m.visibleRows()
-		m.cursor = len(m.txs) - 1
+		m.cursor = len(txs) - 1
 		m.offset = m.cursor - visible + 1
 		if m.offset < 0 {
 			m.offset = 0
 		}
 	case "enter":
-		if len(m.txs) > 0 {
-			m.picking = true
-			m.categoryCursor = 0
+		if len(txs) > 0 {
+			if m.tab == 0 {
+				m.picking = true
+				m.categoryCursor = 0
+			} else {
+				m.pickingType = true
+				m.typeCursor = 0
+			}
 		}
-	case "i", "T", "I":
-		if len(m.txs) > 0 {
-			pattern := m.txs[m.cursor].Description
-			txType := map[string]domain.TransactionType{
-				"i": domain.Income,
-				"T": domain.Transfer,
-				"I": domain.Investment,
-			}[msg.String()]
-			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: txType} }
+	case "i":
+		if m.tab == 0 && len(txs) > 0 {
+			pattern := txs[m.cursor].Description
+			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: domain.Income} }
+		}
+	case "T":
+		if m.tab == 0 && len(txs) > 0 {
+			pattern := txs[m.cursor].Description
+			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: domain.Transfer} }
+		}
+	case "I":
+		if m.tab == 0 && len(txs) > 0 {
+			pattern := txs[m.cursor].Description
+			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: domain.Investment} }
 		}
 	case "n":
-		if len(m.txs) > 0 {
-			// Save a pattern-only rule to acknowledge this description
-			// without assigning a category. It won't appear in review again.
-			pattern := m.txs[m.cursor].Description
+		if len(txs) > 0 {
+			pattern := txs[m.cursor].Description
 			return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern} }
 		}
 	}
 	return m, nil
 }
 
-func (m ReviewModel) updatePicking(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
+func (m ReviewModel) updatePickingCategory(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 	switch msg.String() {
 	case "up", "k":
 		if m.categoryCursor > 0 {
@@ -130,7 +173,7 @@ func (m ReviewModel) updatePicking(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 			m.categoryCursor++
 		}
 	case "enter":
-		pattern := m.txs[m.cursor].Description
+		pattern := m.expenses[m.cursor].Description
 		category := m.buckets[m.categoryCursor]
 		m.picking = false
 		return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Category: category} }
@@ -140,9 +183,29 @@ func (m ReviewModel) updatePicking(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
 	return m, nil
 }
 
+func (m ReviewModel) updatePickingType(msg tea.KeyMsg) (ReviewModel, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.typeCursor > 0 {
+			m.typeCursor--
+		}
+	case "down", "j":
+		if m.typeCursor < len(reviewTypes)-1 {
+			m.typeCursor++
+		}
+	case "enter":
+		pattern := m.transfers[m.cursor].Description
+		t := reviewTypes[m.typeCursor]
+		m.pickingType = false
+		return m, func() tea.Msg { return RuleSavedMsg{Pattern: pattern, Type: t} }
+	case "esc":
+		m.pickingType = false
+	}
+	return m, nil
+}
+
 func (m ReviewModel) visibleRows() int {
-	// Reserve lines: header(3) + hint(2) + some padding
-	rows := m.height - 7
+	rows := m.height - 9 // header(3) + tabs(2) + hint(2) + padding
 	if rows < 5 {
 		rows = 5
 	}
@@ -150,76 +213,139 @@ func (m ReviewModel) visibleRows() int {
 }
 
 func (m ReviewModel) View() string {
-	if len(m.txs) == 0 {
-		return "\n  All transactions categorised!\n\n  Press 's' to view the summary.\n"
+	allEmpty := len(m.expenses) == 0 && len(m.transfers) == 0
+	if allEmpty {
+		return "\n  All transactions reviewed!\n\n  Press 's' to view the summary.\n"
 	}
 
-	var left, right strings.Builder
+	var sb strings.Builder
 
-	visible := m.visibleRows()
-	end := m.offset + visible
-	if end > len(m.txs) {
-		end = len(m.txs)
+	// Tab headers
+	activeStyle := lipgloss.NewStyle().Bold(true).Underline(true)
+	inactiveStyle := lipgloss.NewStyle().Faint(true)
+
+	expLabel := fmt.Sprintf("Expenses (%d)", len(m.expenses))
+	trLabel := fmt.Sprintf("Transfers (%d)", len(m.transfers))
+	if m.tab == 0 {
+		expLabel = activeStyle.Render(expLabel)
+		trLabel = inactiveStyle.Render(trLabel)
+	} else {
+		expLabel = inactiveStyle.Render(expLabel)
+		trLabel = activeStyle.Render(trLabel)
 	}
+	fmt.Fprintf(&sb, "\n  %s    %s\n\n", expLabel, trLabel)
 
-	fmt.Fprintf(&left, "  Uncategorised (%d)\n\n", len(m.txs))
-	for i, tx := range m.txs[m.offset:end] {
-		abs := m.offset + i
-		isSelected := abs == m.cursor
-
-		cursor := "  "
-		if isSelected {
-			cursor = "> "
+	txs := m.currentTxs()
+	if len(txs) == 0 {
+		sb.WriteString("  Nothing to review here.\n")
+	} else {
+		visible := m.visibleRows()
+		end := m.offset + visible
+		if end > len(txs) {
+			end = len(txs)
 		}
 
-		desc := tx.Description
-		if len(desc) > 38 {
-			desc = desc[:35] + "..."
-		}
+		var left, right strings.Builder
+		isPicking := m.picking || m.pickingType
+		for i, tx := range txs[m.offset:end] {
+			abs := m.offset + i
+			isSelected := abs == m.cursor
 
-		amountStr := fmt.Sprintf("%8.2f", tx.Amount)
-		dateStr := tx.Date.Format("2006-01-02")
-
-		line := fmt.Sprintf("%s%-38s  %s  %s", cursor, desc, amountStr, dateStr)
-		if isSelected {
-			line = lipgloss.NewStyle().Bold(true).Render(line)
-		}
-		fmt.Fprintln(&left, line)
-		if isSelected && !m.picking {
-			faint := lipgloss.NewStyle().Faint(true)
-			fmt.Fprintln(&left, faint.Render("  [enter] expense  [i] income  [T] transfer  [I] invest  [n] skip"))
-		}
-	}
-	if end < len(m.txs) {
-		fmt.Fprintf(&left, "  ↓ %d more\n", len(m.txs)-end)
-	}
-
-	if m.picking {
-		fmt.Fprintf(&right, "  Pick a category\n\n")
-		for i, b := range m.buckets {
 			cursor := "  "
-			if i == m.categoryCursor {
+			if isSelected {
 				cursor = "> "
 			}
-			fmt.Fprintf(&right, "%s%s\n", cursor, b)
+
+			desc := tx.Description
+			if len(desc) > 38 {
+				desc = desc[:35] + "..."
+			}
+
+			line := fmt.Sprintf("%s%-38s  %8.2f  %s", cursor, desc, tx.Amount, tx.Date.Format("2006-01-02"))
+			if isSelected {
+				line = lipgloss.NewStyle().Bold(true).Render(line)
+			}
+			fmt.Fprintln(&left, line)
+			if isSelected && !isPicking {
+				faint := lipgloss.NewStyle().Faint(true)
+				var hint string
+				if m.tab == 0 {
+					hint = "  [enter] categorize  [i] income  [T] transfer  [I] invest  [n] skip"
+				} else {
+					hint = "  [enter] pick type  [n] skip"
+				}
+				fmt.Fprintln(&left, faint.Render(hint))
+			}
+		}
+		if end < len(txs) {
+			fmt.Fprintf(&left, "  ↓ %d more\n", len(txs)-end)
+		}
+
+		if m.picking {
+			fmt.Fprintf(&right, "  Pick a category\n\n")
+			for i, b := range m.buckets {
+				c := "  "
+				if i == m.categoryCursor {
+					c = "> "
+				}
+				fmt.Fprintf(&right, "%s%s\n", c, b)
+			}
+		} else if m.pickingType {
+			fmt.Fprintf(&right, "  Pick a type\n\n")
+			for i, t := range reviewTypes {
+				c := "  "
+				if i == m.typeCursor {
+					c = "> "
+				}
+				fmt.Fprintf(&right, "%s%s\n", c, string(t))
+			}
+		}
+
+		sb.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.NewStyle().Width(68).Render(left.String()),
+			lipgloss.NewStyle().Width(30).Render(right.String()),
+		))
+	}
+
+	var hint string
+	switch {
+	case m.picking:
+		hint = "\n  ↑/↓ navigate   enter confirm   esc cancel"
+	case m.pickingType:
+		hint = "\n  ↑/↓ navigate   enter confirm   esc cancel"
+	case m.tab == 0:
+		hint = "\n  ↑/↓ navigate   enter categorize   i income   T transfer   I invest   n skip   tab switch"
+	default:
+		hint = "\n  ↑/↓ navigate   enter pick type   n skip   tab switch"
+	}
+	sb.WriteString(hint + "\n" + globalHint("review"))
+
+	return sb.String()
+}
+
+func (m ReviewModel) SetQueues(expenses, transfers []domain.Transaction) ReviewModel {
+	m.expenses = expenses
+	m.transfers = transfers
+
+	// If current tab is now empty but the other has items, switch over.
+	if len(m.currentTxs()) == 0 {
+		other := 1 - m.tab
+		var otherTxs []domain.Transaction
+		if other == 0 {
+			otherTxs = expenses
+		} else {
+			otherTxs = transfers
+		}
+		if len(otherTxs) > 0 {
+			m.tab = other
+			m.cursor = 0
+			m.offset = 0
+			return m
 		}
 	}
 
-	body := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(68).Render(left.String()),
-		lipgloss.NewStyle().Width(30).Render(right.String()),
-	)
-
-	hint := "\n  ↑/↓ navigate   enter expense   i income   T transfer   I investment   n skip\n" + globalHint("review")
-	if m.picking {
-		hint = "\n  ↑/↓ navigate   enter confirm   esc cancel"
-	}
-
-	return body + hint
-}
-
-func (m ReviewModel) SetDescriptions(txs []domain.Transaction) ReviewModel {
-	m.txs = txs
+	// Clamp cursor within current tab's list.
+	txs := m.currentTxs()
 	if len(txs) == 0 {
 		m.cursor = 0
 	} else if m.cursor >= len(txs) {

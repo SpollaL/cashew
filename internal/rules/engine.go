@@ -32,6 +32,9 @@ func Apply(txs []domain.Transaction, rules []domain.Rule) []domain.Transaction {
 				break
 			}
 		}
+		if tx.Type != domain.Expense {
+			tx.Category = ""
+		}
 	}
 	return result
 }
@@ -45,6 +48,22 @@ func Uncategorised(txs []domain.Transaction, rulesList []domain.Rule) []domain.T
 	var out []domain.Transaction
 	for _, tx := range txs {
 		if tx.Type == domain.Expense && tx.Category == "" && !seen[tx.Description] {
+			if !matchedByAnyRule(tx.Description, rulesList) {
+				seen[tx.Description] = true
+				out = append(out, tx)
+			}
+		}
+	}
+	return out
+}
+
+// UnreviewedTransfers returns one representative transaction per unique description
+// for transfer transactions not yet acknowledged by any rule.
+func UnreviewedTransfers(txs []domain.Transaction, rulesList []domain.Rule) []domain.Transaction {
+	seen := map[string]bool{}
+	var out []domain.Transaction
+	for _, tx := range txs {
+		if tx.Type == domain.Transfer && !seen[tx.Description] {
 			if !matchedByAnyRule(tx.Description, rulesList) {
 				seen[tx.Description] = true
 				out = append(out, tx)

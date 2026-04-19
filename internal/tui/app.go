@@ -44,12 +44,13 @@ type App struct {
 func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, model string, debug bool) App {
 	txs := l.All()
 	uncategorised := rules.Uncategorised(txs, rulesList)
+	unreviewed := rules.UnreviewedTransfers(txs, rulesList)
 
 	g := domain.Monthly
 	summaries := l.Aggregate(g)
 
 	active := viewSummary
-	if len(uncategorised) > 0 {
+	if len(uncategorised) > 0 || len(unreviewed) > 0 {
 		active = viewReview
 	}
 
@@ -63,7 +64,7 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, 
 		summary:      views.NewSummary(summaries, g),
 		categories:   views.NewCategories(summaries, g),
 		transactions: views.NewTransactions(txs, buckets),
-		review:       views.NewReview(uncategorised, buckets),
+		review:       views.NewReview(uncategorised, unreviewed, buckets),
 	}
 
 	llmClient := llm.NewClient(model, llm.Tools{
@@ -340,7 +341,7 @@ func (a App) applyRefresh(msg refreshMsg) App {
 	summaries := a.fullLedger.Aggregate(a.granularity)
 	a.summary = a.summary.SetData(summaries, a.granularity)
 	a.categories = a.categories.SetData(summaries, a.granularity)
-	a.transactions = views.NewTransactions(txs, msg.buckets).SetSize(a.transactions.Height())
-	a.review = a.review.SetDescriptions(rules.Uncategorised(txs, msg.rulesList))
+	a.transactions = a.transactions.WithData(txs, msg.buckets)
+	a.review = a.review.SetQueues(rules.Uncategorised(txs, msg.rulesList), rules.UnreviewedTransfers(txs, msg.rulesList))
 	return a
 }

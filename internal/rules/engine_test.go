@@ -60,6 +60,24 @@ func TestApply_CategoryOnlyForExpenses(t *testing.T) {
 	}
 }
 
+func TestApply_ClearsCategoryWhenTypeChangedToIncome(t *testing.T) {
+	// Simulate an expense that already has a category (from a previous rule run),
+	// and a new rule changes its type to Income — category must be cleared.
+	txWithCategory := tx("Freelance payment", domain.Expense)
+	txWithCategory.Category = "Work"
+	txs := []domain.Transaction{txWithCategory}
+	rulesList := []domain.Rule{{Pattern: "freelance", Type: domain.Income}}
+
+	got := rules.Apply(txs, rulesList)
+
+	if got[0].Type != domain.Income {
+		t.Errorf("got type %q, want Income", got[0].Type)
+	}
+	if got[0].Category != "" {
+		t.Errorf("income transaction kept category %q, want empty", got[0].Category)
+	}
+}
+
 func TestApply_CaseInsensitiveMatch(t *testing.T) {
 	txs := []domain.Transaction{tx("MERCADONA VILLAVERDE", domain.Expense)}
 	rulesList := []domain.Rule{{Pattern: "mercadona", Category: "Groceries"}}

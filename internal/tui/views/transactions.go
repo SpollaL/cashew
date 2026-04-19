@@ -57,6 +57,19 @@ func NewTransactions(txs []domain.Transaction, buckets []string) TransactionsMod
 	return TransactionsModel{all: sorted, buckets: buckets}
 }
 
+// WithData replaces the underlying transaction list and buckets while
+// preserving filter, cursor, and drill-down state.
+func (m TransactionsModel) WithData(txs []domain.Transaction, buckets []string) TransactionsModel {
+	sorted := make([]domain.Transaction, len(txs))
+	copy(sorted, txs)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Date.After(sorted[j].Date)
+	})
+	m.all = sorted
+	m.buckets = buckets
+	return m
+}
+
 func (m TransactionsModel) SetSize(height int) TransactionsModel {
 	m.height = height
 	return m
