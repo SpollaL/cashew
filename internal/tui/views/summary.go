@@ -1,8 +1,8 @@
 package views
 
 import (
-	"cashew/internal/domain"
-	"cashew/internal/ledger"
+	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/ledger"
 	"fmt"
 	"strings"
 

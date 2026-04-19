@@ -1,7 +1,7 @@
 package views
 
 import (
-	"cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/domain"
 	"fmt"
 	"sort"
 	"strings"

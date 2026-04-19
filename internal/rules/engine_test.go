@@ -1,8 +1,8 @@
 package rules_test
 
 import (
-	"cashew/internal/domain"
-	"cashew/internal/rules"
+	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/rules"
 	"testing"
 	"time"
 )
@@ -135,5 +135,44 @@ func TestUncategorised_DeduplicatesDescriptions(t *testing.T) {
 
 	if len(got) != 1 {
 		t.Errorf("got %d entries, want 1 (deduplication)", len(got))
+	}
+}
+
+func TestUnreviewedTransfers_ReturnsUnmatchedTransfers(t *testing.T) {
+	txs := []domain.Transaction{
+		tx("Al Pocket", domain.Transfer),
+		tx("Salary", domain.Income),      // not a transfer, excluded
+		tx("Al Pocket", domain.Transfer), // duplicate description
+	}
+
+	got := rules.UnreviewedTransfers(txs, nil)
+
+	if len(got) != 1 || got[0].Description != "Al Pocket" {
+		t.Errorf("got %v, want [Al Pocket]", got)
+	}
+}
+
+func TestUnreviewedTransfers_ExcludesMatchedByRule(t *testing.T) {
+	txs := []domain.Transaction{tx("Al Pocket", domain.Transfer)}
+	rulesList := []domain.Rule{{Pattern: "pocket"}}
+
+	got := rules.UnreviewedTransfers(txs, rulesList)
+
+	if len(got) != 0 {
+		t.Errorf("got %v, want empty — Al Pocket is matched by rule", got)
+	}
+}
+
+func TestUnreviewedTransfers_ExcludesExpensesAndIncome(t *testing.T) {
+	txs := []domain.Transaction{
+		tx("Mercadona", domain.Expense),
+		tx("Salary", domain.Income),
+		tx("Bizum", domain.Transfer),
+	}
+
+	got := rules.UnreviewedTransfers(txs, nil)
+
+	if len(got) != 1 || got[0].Description != "Bizum" {
+		t.Errorf("got %v, want only [Bizum]", got)
 	}
 }

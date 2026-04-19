@@ -1,8 +1,8 @@
 package views
 
 import (
-	"cashew/internal/domain"
-	"cashew/internal/ledger"
+	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/ledger"
 	"fmt"
 	"sort"
 	"strings"
@@ -216,17 +216,10 @@ func (m CategoriesModel) View() string {
 		}
 
 		// Total and Avg columns (not selectable)
-		// Average over periods where the category had any spend, not all periods.
 		total := m.pivot.catTotals[cat]
 		avg := 0.0
-		activePeriods := 0
-		for _, p := range m.pivot.periods {
-			if m.pivot.data[cat][p.Label] > 0 {
-				activePeriods++
-			}
-		}
-		if activePeriods > 0 {
-			avg = total / float64(activePeriods)
+		if nPeriods > 0 {
+			avg = total / float64(nPeriods)
 		}
 		suffix := fmt.Sprintf("%*.0f€%*.0f€", colW-1, total, colW-1, avg)
 		if isSelectedRow {

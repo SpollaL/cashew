@@ -1,9 +1,9 @@
 package server
 
 import (
-	"cashew/internal/domain"
-	"cashew/internal/ledger"
-	"cashew/internal/rules"
+	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/ledger"
+	"github.com/spolla-l/cashew/internal/rules"
 	"embed"
 	"html/template"
 	"net/http"

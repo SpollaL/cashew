@@ -1,7 +1,7 @@
 package server
 
 import (
-	"cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/domain"
 	"net/http"
 )
 

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"cashew/internal/domain"
-	"cashew/internal/parser"
-	"cashew/internal/rules"
-	"cashew/internal/server"
+	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/parser"
+	"github.com/spolla-l/cashew/internal/rules"
+	"github.com/spolla-l/cashew/internal/server"
 	"flag"
 	"fmt"
 	"net/http"

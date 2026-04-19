@@ -1,8 +1,8 @@
 package parser_test
 
 import (
-	"cashew/internal/domain"
-	"cashew/internal/parser"
+	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/parser"
 	"testing"
 	"time"
 )

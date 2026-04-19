@@ -1,7 +1,7 @@
 package server
 
 import (
-	"cashew/internal/ledger"
+	"github.com/spolla-l/cashew/internal/ledger"
 	"fmt"
 	"net/http"
 	"net/url"

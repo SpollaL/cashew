@@ -1,4 +1,4 @@
-module cashew
+module github.com/spolla-l/cashew
 
 go 1.24.6
 

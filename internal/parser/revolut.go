@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"cashew/internal/domain"
+	"github.com/spolla-l/cashew/internal/domain"
 	"encoding/csv"
 	"fmt"
 	"io"

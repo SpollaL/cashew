@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"cashew/internal/llm"
+	"github.com/spolla-l/cashew/internal/llm"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
