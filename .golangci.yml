@@ -1,13 +1,14 @@
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
   enable:
     - errcheck       # unchecked errors
-    - staticcheck    # comprehensive static analysis (replaces deprecated megacheck)
+    - staticcheck    # comprehensive static analysis (includes unused code checks)
     - govet          # suspicious constructs (shadowed vars, printf mismatches)
     - ineffassign    # assignments whose value is never used
-    - unused         # unexported code that is never referenced
     - misspell       # common English spelling mistakes in comments/strings
 
 issues:
