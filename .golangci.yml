@@ -10,9 +10,11 @@ linters:
     - govet          # suspicious constructs (shadowed vars, printf mismatches)
     - ineffassign    # assignments whose value is never used
     - misspell       # common English spelling mistakes in comments/strings
+
 issues:
-  exclude-rules:
-    # errcheck is too noisy in tests (e.g. ignoring error from deferred Close)
-    - path: _test\.go
-      linters:
-        - errcheck
+  exclusions:
+    rules:
+      # errcheck is too noisy in tests (e.g. ignoring error from deferred Close)
+      - path: _test\.go
+        linters:
+          - errcheck
