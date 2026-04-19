@@ -11,10 +11,18 @@ import (
 	"os"
 )
 
+var version = "dev"
+
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	rulesPath := flag.String("rules", "rules.toml", "path to rules.toml")
+	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *ver {
+		fmt.Println(version)
+		return
+	}
 
 	files := flag.Args()
 	if len(files) == 0 {

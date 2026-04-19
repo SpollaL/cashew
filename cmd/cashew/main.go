@@ -13,10 +13,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var version = "dev"
+
 func main() {
 	model := flag.String("model", "hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M", "Ollama model to use for chat (e.g. gemma3, llama3.2)")
 	debug := flag.Bool("debug", false, "show LLM roundtrip details in the chat view")
+	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *ver {
+		fmt.Println(version)
+		return
+	}
 
 	if flag.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "usage: cashew [-model <name>] <file> [file2 ...]")

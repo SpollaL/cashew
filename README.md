@@ -29,11 +29,21 @@ Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank
 ```bash
 git clone https://github.com/SpollaL/cashew
 cd cashew
-go build -o cashew ./cmd/cashew          # terminal UI
-go build -o cashew-server ./cmd/server   # web UI (optional)
+make build
 ```
 
 Requires Go 1.24+.
+
+## Development
+
+```bash
+make test   # run all tests
+make lint   # run golangci-lint (requires golangci-lint v2 installed)
+make build  # compile both binaries with version injected from git tag
+make clean  # remove compiled binaries
+```
+
+To install golangci-lint: https://golangci-lint.run/welcome/install/
 
 ## Usage
 
@@ -86,7 +96,7 @@ cashew tracks four transaction types. Only **expenses** and **income** flow thro
 | `c` | Categories pivot |
 | `t` | Transactions view |
 | `r` | Review queue |
-| `/` | AI chat |
+| `a` | AI chat |
 | `q` | Quit |
 
 **Summary / Categories**
