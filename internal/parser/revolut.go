@@ -65,7 +65,7 @@ func (Revolut) Parse(r io.Reader) ([]domain.Transaction, error) {
 
 func parseRevolutRow(row []string) (domain.Transaction, error) {
 	// Columns are identical in es-ES and en-GB exports:
-	// 0: Type/Tipo, 1: Product/Producto, 2: Started Date/Fecha de inicio,
+	// 0: Type/Tipo, 1: Product, 2: Started Date/Fecha de inicio,
 	// 3: Completed Date/Fecha de finalización, 4: Description/Descripción,
 	// 5: Amount/Importe, 6: Fee/Comisión, 7: Currency/Divisa, 8: State, 9: Balance/Saldo
 

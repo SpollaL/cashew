@@ -122,25 +122,9 @@ func granularityFromString(s string) domain.Granularity {
 		return domain.Weekly
 	case "yearly":
 		return domain.Yearly
-	case "alltime":
+	case "alltime": //nolint:misspell
 		return domain.AllTime
 	default:
 		return domain.Monthly
-	}
-}
-
-// granularityToString returns the URL-safe param value for a granularity.
-func granularityToString(g domain.Granularity) string {
-	switch g {
-	case domain.Daily:
-		return "daily"
-	case domain.Weekly:
-		return "weekly"
-	case domain.Yearly:
-		return "yearly"
-	case domain.AllTime:
-		return "alltime"
-	default:
-		return "monthly"
 	}
 }

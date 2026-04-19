@@ -26,7 +26,7 @@ func Load(path string, parsers []Parser) ([]domain.Transaction, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	// For CSV files, read the header row for content-based detection.
 	// For other formats (xlsx etc), pass nil — parsers detect by extension.

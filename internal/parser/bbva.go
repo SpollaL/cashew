@@ -27,7 +27,7 @@ func (BBVA) Parse(r io.Reader) ([]domain.Transaction, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open xlsx: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	sheet := f.GetSheetName(0)
 	rows, err := f.GetRows(sheet)

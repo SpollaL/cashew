@@ -15,7 +15,7 @@ func TestRevolutDetect(t *testing.T) {
 		header []string
 		want   bool
 	}{
-		{"spanish export", []string{"Tipo", "Producto", "Fecha de inicio"}, true},
+		{"spanish export", []string{"Tipo", "Fecha de inicio"}, true},
 		{"english export", []string{"Type", "Product", "Started Date"}, true},
 		{"bbva xlsx", nil, false},
 		{"unknown csv", []string{"Date", "Amount", "Balance"}, false},

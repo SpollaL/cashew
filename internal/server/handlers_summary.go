@@ -31,7 +31,7 @@ var allGranularities = []struct {
 	label string
 	g     domain.Granularity
 }{
-	{"alltime", "All time", domain.AllTime},
+	{"alltime", "All time", domain.AllTime}, //nolint:misspell
 	{"yearly", "Yearly", domain.Yearly},
 	{"monthly", "Monthly", domain.Monthly},
 	{"weekly", "Weekly", domain.Weekly},
