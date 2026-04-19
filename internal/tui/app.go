@@ -125,7 +125,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "r":
 			a.active = viewReview
 			return a, nil
-		case "/":
+		case "a":
 			a.prevView = a.active
 			a.active = viewChat
 			return a, nil
