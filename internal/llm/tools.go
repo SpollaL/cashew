@@ -1,6 +1,11 @@
 package llm
 
-import "github.com/ollama/ollama/api"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/ollama/ollama/api"
+)
 
 // TransactionFilters holds optional filters for the GetTransactions tool.
 type TransactionFilters struct {
@@ -12,7 +17,7 @@ type TransactionFilters struct {
 // Tools holds callback functions the LLM can invoke.
 // Each field is wired up by the caller (app.go) which owns the data.
 type Tools struct {
-	GetUncategorizedTransactions func() []string
+	GetUncategorizedTransactions func(offset int) []string
 	GetTransactions              func(filters TransactionFilters) []string
 	GetMonthlySummary            func(months []string) []string
 	GetCategories                func() []string
@@ -42,6 +47,12 @@ func (t Tools) schemas() api.Tools {
 		Description: "Filter by transaction type: 'expense', 'income', or 'investment'",
 	})
 
+	uncatProps := api.NewToolPropertiesMap()
+	uncatProps.Set("offset", api.ToolProperty{
+		Type:        api.PropertyType{"integer"},
+		Description: "Number of transactions to skip (default 0). Use to fetch subsequent batches.",
+	})
+
 	summaryProps := api.NewToolPropertiesMap()
 	summaryProps.Set("months", api.ToolProperty{
 		Type:        api.PropertyType{"array"},
@@ -58,6 +69,7 @@ func (t Tools) schemas() api.Tools {
 		Description: "Category to assign to matching transactions, e.g. 'coffee'",
 	})
 
+	validCats := strings.Join(t.GetCategories(), ", ")
 	bulkRuleItemProps := api.NewToolPropertiesMap()
 	bulkRuleItemProps.Set("pattern", api.ToolProperty{
 		Type:        api.PropertyType{"string"},
@@ -65,7 +77,7 @@ func (t Tools) schemas() api.Tools {
 	})
 	bulkRuleItemProps.Set("category", api.ToolProperty{
 		Type:        api.PropertyType{"string"},
-		Description: "Category to assign",
+		Description: fmt.Sprintf("Category to assign. Must be exactly one of: %s", validCats),
 	})
 	bulkSaveProps := api.NewToolPropertiesMap()
 	bulkSaveProps.Set("rules", api.ToolProperty{
@@ -90,10 +102,10 @@ func (t Tools) schemas() api.Tools {
 			Type: "function",
 			Function: api.ToolFunction{
 				Name:        "get_uncategorized_transactions",
-				Description: "Fetch all transactions that have not been assigned a category yet.",
+				Description: "Fetch a batch of uncategorized transactions. Returns up to 20 at a time. If the result says more remain, call again with the next offset.",
 				Parameters: api.ToolFunctionParameters{
 					Type:       "object",
-					Properties: api.NewToolPropertiesMap(),
+					Properties: uncatProps,
 				},
 			},
 		},

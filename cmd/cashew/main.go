@@ -14,7 +14,8 @@ import (
 )
 
 func main() {
-	model := flag.String("model", "gemma3", "Ollama model to use for chat (e.g. gemma3, llama3.2)")
+	model := flag.String("model", "hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M", "Ollama model to use for chat (e.g. gemma3, llama3.2)")
+	debug := flag.Bool("debug", false, "show LLM roundtrip details in the chat view")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
@@ -49,7 +50,7 @@ func main() {
 	allTxs = rules.Apply(allTxs, rulesList)
 	l := ledger.New(allTxs)
 
-	app := tui.New(l, rulesList, buckets, rulesPath, *model)
+	app := tui.New(l, rulesList, buckets, rulesPath, *model, *debug)
 	p := tea.NewProgram(app, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

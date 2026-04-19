@@ -1,5 +1,5 @@
-cashew
-cashew-server
+/cashew
+/cashew-server
 *.csv
 *.xlsx
 rules.toml

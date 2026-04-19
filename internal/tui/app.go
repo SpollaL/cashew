@@ -41,7 +41,7 @@ type App struct {
 	height int
 }
 
-func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, model string) App {
+func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, model string, debug bool) App {
 	txs := l.All()
 	uncategorised := rules.Uncategorised(txs, rulesList)
 
@@ -73,8 +73,8 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, 
 		GetCategories:                app.getCategories,
 		SaveCategoryRule:             app.saveCategoryRuleSync,
 		BulkSaveCategoryRules:        app.bulkSaveCategoryRules,
-	})
-	app.chat = views.NewChat(llmClient)
+	}, debug)
+	app.chat = views.NewChat(llmClient, debug)
 
 	return app
 }
@@ -219,18 +219,36 @@ type refreshMsg struct {
 
 // ── LLM tool callbacks ────────────────────────────────────────────────────────
 
-func (a App) getUncategorizedTransactions() []string {
-	var rows []string
+const uncategorizedBatchSize = 20
+
+func (a App) getUncategorizedTransactions(offset int) []string {
+	var all []string
 	for _, tx := range a.fullLedger.All() {
 		if tx.Category == "" {
-			rows = append(rows, fmt.Sprintf("%s | %8.2f %s | %s",
+			all = append(all, fmt.Sprintf("%s | %8.2f %s | %s",
 				tx.Date.Format("2006-01-02"),
 				tx.Amount, tx.Currency,
 				tx.Description,
 			))
 		}
 	}
-	return rows
+	total := len(all)
+	if offset >= total {
+		return []string{"No more uncategorized transactions."}
+	}
+	end := offset + uncategorizedBatchSize
+	if end > total {
+		end = total
+	}
+	batch := make([]string, end-offset+1)
+	copy(batch, all[offset:end])
+	remaining := total - end
+	if remaining > 0 {
+		batch[len(batch)-1] = fmt.Sprintf("[%d-%d of %d shown — call again with offset=%d for the next batch]", offset+1, end, total, end)
+	} else {
+		batch[len(batch)-1] = fmt.Sprintf("[%d-%d of %d shown — this is the last batch]", offset+1, end, total)
+	}
+	return batch
 }
 
 func (a App) getTransactions(filters llm.TransactionFilters) []string {

@@ -42,6 +42,7 @@ Requires Go 1.24+.
 ```bash
 ./cashew data/*.csv data/*.xlsx
 ./cashew -model gemma3 data/*.csv    # choose a specific Ollama model for chat
+./cashew -debug data/*.csv           # show LLM roundtrip details in the chat view
 ```
 
 **Web UI** (handy on mobile)
@@ -132,13 +133,13 @@ Press `/` from any view to open the chat panel. Type a question and press `enter
 **Prerequisites**
 
 1. Install [Ollama](https://ollama.com) and start it (`ollama serve`).
-2. Pull a model — `gemma3` is the default:
+2. Pull a model — `hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M` is the default:
    ```bash
-   ollama pull gemma3
+   ollama pull hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M
    ```
 3. Pass a different model with the `-model` flag if needed:
    ```bash
-   ./cashew -model llama3.2 data/*.csv
+   ./cashew -model gemma3 data/*.csv
    ```
 
 The app connects to Ollama at `http://localhost:11434` by default. Set `OLLAMA_HOST` to override.
@@ -154,7 +155,7 @@ The model has access to four tools it can call autonomously:
 
 | Tool | What it does |
 |------|-------------|
-| `get_uncategorized_transactions` | Fetch transactions with no category assigned |
+| `get_uncategorized_transactions` | Fetch uncategorized transactions in batches of 20; pass `offset` to page through them |
 | `get_transactions` | Fetch transactions, optionally filtered by category, month, or type |
 | `get_monthly_summary` | Income / expenses / investments per month |
 | `get_categories` | List all known spending categories |
@@ -162,7 +163,7 @@ The model has access to four tools it can call autonomously:
 
 > **Note:** `save_category_rule` writes directly to `rules.toml` but the in-memory view is not refreshed until you restart the app or navigate through the review queue. The rules will be applied correctly on the next launch.
 
-> **Model compatibility:** multi-step tool calling works best with models that support function calling well — `gemma3`, `llama3.1`, and `qwen2.5` are good choices. Smaller models may summarise instead of invoking tools; try a larger variant if that happens.
+> **Model compatibility:** multi-step tool calling works best with models that support function calling well — `Qwen3`, `gemma3`, `llama3.1`, and `qwen2.5` are good choices. Smaller models may summarise instead of invoking tools; try a larger variant if that happens.
 
 ## Rules
 

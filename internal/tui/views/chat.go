@@ -1,9 +1,10 @@
 package views
 
 import (
-	"cashew/internal/llm"
 	"fmt"
 	"strings"
+
+	"cashew/internal/llm"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -27,12 +28,13 @@ type ChatModel struct {
 	streamCh <-chan tea.Msg
 	width    int
 	height   int
+	debug    bool
 }
 
 // reserved lines: title (2) + gap before input (1) + input (1) + gap (1) + nav (1) = 6
 const reservedLines = 6
 
-func NewChat(client *llm.Client) ChatModel {
+func NewChat(client *llm.Client, debug bool) ChatModel {
 	ti := textinput.New()
 	ti.Placeholder = "Ask about your finances…"
 	ti.Focus()
@@ -40,7 +42,7 @@ func NewChat(client *llm.Client) ChatModel {
 	ti.Width = 60
 
 	vp := viewport.New(0, 0)
-	return ChatModel{client: client, input: ti, vp: vp}
+	return ChatModel{client: client, input: ti, vp: vp, debug: debug}
 }
 
 func (m ChatModel) SetSize(width, height int) ChatModel {
@@ -91,6 +93,14 @@ func (m ChatModel) Update(msg tea.Msg) (ChatModel, tea.Cmd) {
 		m.vp.GotoBottom()
 		return m, llm.WaitForStream(m.streamCh)
 
+	case llm.LLMDebugMsg:
+		if m.debug {
+			m.history = append(m.history, chatEntry{role: "debug", content: msg.Text})
+			m.vp.SetContent(m.renderHistory())
+			m.vp.GotoBottom()
+		}
+		return m, llm.WaitForStream(m.streamCh)
+
 	case llm.LLMStreamDoneMsg:
 		m.thinking = false
 		m.streamCh = nil
@@ -136,12 +146,10 @@ func (m ChatModel) renderHistory() string {
 	userStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
 	assistantStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	debugStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 
 	// Content width: viewport width minus "  llm: " (7 chars) indent.
-	contentWidth := m.vp.Width - 7
-	if contentWidth < 20 {
-		contentWidth = 20
-	}
+	contentWidth := max(m.vp.Width - 7, 20)
 
 	var sb strings.Builder
 	for _, e := range m.history {
@@ -161,6 +169,8 @@ func (m ChatModel) renderHistory() string {
 			}
 		case "error":
 			sb.WriteString("  " + errorStyle.Render(e.content) + "\n")
+		case "debug":
+			sb.WriteString("  " + debugStyle.Render(e.content) + "\n")
 		}
 	}
 	if m.thinking {
@@ -173,7 +183,7 @@ func (m ChatModel) renderHistory() string {
 // It preserves existing newlines in the input.
 func wordWrap(text string, width int) []string {
 	var out []string
-	for _, paragraph := range strings.Split(text, "\n") {
+	for paragraph := range strings.SplitSeq(text, "\n") {
 		out = append(out, wrapLine(paragraph, width)...)
 	}
 	return out
