@@ -90,6 +90,14 @@ func NewClient(model string, tools Tools, debug bool) *Client {
 	}
 }
 
+// ClearHistory resets the conversation to just the system prompt.
+func (c *Client) ClearHistory() {
+	today := time.Now().Format("2006-01-02")
+	c.history = []api.Message{
+		{Role: "system", Content: fmt.Sprintf(systemPromptTemplate, today)},
+	}
+}
+
 // WaitForStream returns a Cmd that reads the next message from ch.
 func WaitForStream(ch <-chan tea.Msg) tea.Cmd {
 	return func() tea.Msg {

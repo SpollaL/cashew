@@ -59,6 +59,14 @@ func (m ChatModel) SetSize(width, height int) ChatModel {
 func (m ChatModel) Update(msg tea.Msg) (ChatModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if msg.String() == "ctrl+l" {
+			if !m.thinking {
+				m.history = nil
+				m.client.ClearHistory()
+				m.vp.SetContent("")
+			}
+			return m, nil
+		}
 		if msg.String() == "enter" {
 			if m.thinking || strings.TrimSpace(m.input.Value()) == "" {
 				return m, nil
@@ -137,7 +145,8 @@ func (m ChatModel) View() string {
 	bold := lipgloss.NewStyle().Bold(true)
 	title := "\n  " + bold.Render("Chat") + "\n"
 	input := "\n  " + m.input.View() + "\n"
-	nav := globalHint("chat") + "\n"
+	faint := lipgloss.NewStyle().Faint(true)
+	nav := globalHint("chat") + faint.Render("   ctrl+l clear") + "\n"
 	return title + m.vp.View() + input + nav
 }
 
