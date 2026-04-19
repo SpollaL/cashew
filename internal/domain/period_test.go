@@ -1,7 +1,7 @@
 package domain_test
 
 import (
-	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/domain"
 	"testing"
 	"time"
 )

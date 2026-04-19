@@ -1,11 +1,11 @@
 package tui
 
 import (
-	"github.com/spolla-l/cashew/internal/domain"
-	"github.com/spolla-l/cashew/internal/ledger"
-	"github.com/spolla-l/cashew/internal/llm"
-	"github.com/spolla-l/cashew/internal/rules"
-	"github.com/spolla-l/cashew/internal/tui/views"
+	"github.com/SpollaL/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/ledger"
+	"github.com/SpollaL/cashew/internal/llm"
+	"github.com/SpollaL/cashew/internal/rules"
+	"github.com/SpollaL/cashew/internal/tui/views"
 	"fmt"
 	"time"
 

@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/domain"
 	"fmt"
 	"os"
 	"strings"

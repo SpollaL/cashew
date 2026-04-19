@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/domain"
 )
 
 func TestBBVADescription(t *testing.T) {

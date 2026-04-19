@@ -1,8 +1,8 @@
 package rules_test
 
 import (
-	"github.com/spolla-l/cashew/internal/domain"
-	"github.com/spolla-l/cashew/internal/rules"
+	"github.com/SpollaL/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/rules"
 	"testing"
 	"time"
 )

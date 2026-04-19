@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/spolla-l/cashew/internal/domain"
-	"github.com/spolla-l/cashew/internal/ledger"
-	"github.com/spolla-l/cashew/internal/parser"
-	"github.com/spolla-l/cashew/internal/rules"
-	"github.com/spolla-l/cashew/internal/tui"
+	"github.com/SpollaL/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/ledger"
+	"github.com/SpollaL/cashew/internal/parser"
+	"github.com/SpollaL/cashew/internal/rules"
+	"github.com/SpollaL/cashew/internal/tui"
 	"flag"
 	"fmt"
 	"os"

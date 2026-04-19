@@ -1,7 +1,7 @@
 package ledger
 
 import (
-	"github.com/spolla-l/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/domain"
 	"sort"
 	"time"
 )
