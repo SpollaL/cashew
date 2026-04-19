@@ -26,6 +26,13 @@ Personal finance tracker for the terminal. Reads CSV/XLSX exports from your bank
 
 ## Installation
 
+**With Go installed** (no clone needed):
+```bash
+go install github.com/SpollaL/cashew/cmd/cashew@latest
+go install github.com/SpollaL/cashew/cmd/server@latest   # optional web UI
+```
+
+**Build from source:**
 ```bash
 git clone https://github.com/SpollaL/cashew
 cd cashew
