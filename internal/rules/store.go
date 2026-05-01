@@ -18,10 +18,11 @@ type config struct {
 }
 
 type tomlRule struct {
-	Pattern  string `toml:"pattern"`
-	Regex    bool   `toml:"regex,omitempty"`
-	Type     string `toml:"type,omitempty"`
-	Category string `toml:"category,omitempty"`
+	Pattern  string   `toml:"pattern,omitempty"`
+	Patterns []string `toml:"patterns,omitempty"`
+	Regex    bool     `toml:"regex,omitempty"`
+	Type     string   `toml:"type,omitempty"`
+	Category string   `toml:"category,omitempty"`
 }
 
 var defaultBuckets = []string{
@@ -54,6 +55,7 @@ func Load(path string) ([]domain.Rule, []string, error) {
 	for i, r := range cfg.Rules {
 		rulesList[i] = domain.Rule{
 			Pattern:  r.Pattern,
+			Patterns: r.Patterns,
 			Regex:    r.Regex,
 			Type:     domain.TransactionType(r.Type),
 			Category: r.Category,
@@ -106,7 +108,23 @@ func write(path string, rulesList []domain.Rule, buckets []string) error {
 	sb.WriteString("]\n")
 
 	for _, r := range rulesList {
-		fmt.Fprintf(&sb, "\n[[rules]]\npattern = %q\n", r.Pattern)
+		sb.WriteString("\n[[rules]]\n")
+		if r.Pattern != "" {
+			fmt.Fprintf(&sb, "pattern = %q\n", r.Pattern)
+		}
+		if len(r.Patterns) > 0 {
+			sb.WriteString("patterns = [")
+			for i, p := range r.Patterns {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				fmt.Fprintf(&sb, "%q", p)
+			}
+			sb.WriteString("]\n")
+		}
+		if r.Regex {
+			sb.WriteString("regex = true\n")
+		}
 		if r.Type != "" {
 			fmt.Fprintf(&sb, "type = %q\n", r.Type)
 		}

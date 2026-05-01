@@ -57,3 +57,76 @@ category = "Groceries"
 		t.Fatal("expected error for invalid regex in TOML, got nil")
 	}
 }
+
+func TestSaveAndLoad_MultiplePatterns(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "rules.toml")
+
+	r := domain.Rule{Patterns: []string{"Lidl", "Aldi"}, Category: "Groceries"}
+	if err := rules.SaveRule(path, r); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, _, err := rules.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded) == 0 {
+		t.Fatal("expected at least one rule")
+	}
+	got := loaded[0]
+	if len(got.Patterns) != 2 || got.Patterns[0] != "Lidl" || got.Patterns[1] != "Aldi" {
+		t.Errorf("Patterns = %v, want [Lidl Aldi]", got.Patterns)
+	}
+	if got.Category != "Groceries" {
+		t.Errorf("Category = %q, want Groceries", got.Category)
+	}
+}
+
+func TestSaveAndLoad_RegexPattern(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "rules.toml")
+
+	r := domain.Rule{Pattern: `^salary\s`, Regex: true, Type: domain.Income}
+	if err := rules.SaveRule(path, r); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, _, err := rules.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded) == 0 {
+		t.Fatal("expected at least one rule")
+	}
+	got := loaded[0]
+	if got.Pattern != `^salary\s` {
+		t.Errorf("Pattern = %q, want ^salary\\s", got.Pattern)
+	}
+	if !got.Regex {
+		t.Error("Regex = false, want true")
+	}
+}
+
+func TestSaveAndLoad_BackwardCompat(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "rules.toml")
+	content := `
+[categories]
+buckets = ["Groceries"]
+
+[[rules]]
+pattern = "Mercadona"
+category = "Groceries"
+`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err := rules.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded) != 1 || loaded[0].Pattern != "Mercadona" || loaded[0].Category != "Groceries" {
+		t.Errorf("backward compat failed: %+v", loaded)
+	}
+}
