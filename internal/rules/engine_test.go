@@ -176,3 +176,78 @@ func TestUnreviewedTransfers_ExcludesExpensesAndIncome(t *testing.T) {
 		t.Errorf("got %v, want only [Bizum]", got)
 	}
 }
+
+func TestApply_MultiplePatterns(t *testing.T) {
+	rulesList := []domain.Rule{
+		{Patterns: []string{"lidl", "aldi", "mercadona"}, Category: "Groceries"},
+	}
+	txs := []domain.Transaction{
+		tx("Lidl payment", domain.Expense),
+		tx("ALDI purchase", domain.Expense),
+		tx("Other shop", domain.Expense),
+	}
+	got := rules.Apply(txs, rulesList)
+	if got[0].Category != "Groceries" {
+		t.Errorf("Lidl: want Groceries, got %q", got[0].Category)
+	}
+	if got[1].Category != "Groceries" {
+		t.Errorf("ALDI: want Groceries, got %q", got[1].Category)
+	}
+	if got[2].Category != "" {
+		t.Errorf("Other: want empty, got %q", got[2].Category)
+	}
+}
+
+func TestApply_RegexPattern(t *testing.T) {
+	rulesList := []domain.Rule{
+		{Pattern: `^salary\s`, Regex: true, Type: domain.Income},
+	}
+	txs := []domain.Transaction{
+		tx("Salary January", domain.Unknown),
+		tx("not a salary thing", domain.Unknown),
+	}
+	got := rules.Apply(txs, rulesList)
+	if got[0].Type != domain.Income {
+		t.Errorf("Salary January: want Income, got %q", got[0].Type)
+	}
+	if got[1].Type == domain.Income {
+		t.Errorf("not a salary: should not be Income")
+	}
+}
+
+func TestApply_RegexMultiplePatterns(t *testing.T) {
+	rulesList := []domain.Rule{
+		{Patterns: []string{`^glovo`, `^uber eats`}, Regex: true, Category: "Dining"},
+	}
+	txs := []domain.Transaction{
+		tx("Glovo order 123", domain.Expense),
+		tx("Uber Eats delivery", domain.Expense),
+		tx("Super Glovo XYZ", domain.Expense), // should NOT match ^glovo
+	}
+	got := rules.Apply(txs, rulesList)
+	if got[0].Category != "Dining" {
+		t.Errorf("Glovo: want Dining, got %q", got[0].Category)
+	}
+	if got[1].Category != "Dining" {
+		t.Errorf("Uber Eats: want Dining, got %q", got[1].Category)
+	}
+	if got[2].Category != "" {
+		t.Errorf("Super Glovo: should not match ^glovo, got %q", got[2].Category)
+	}
+}
+
+func TestUncategorised_MultiplePatterns(t *testing.T) {
+	txs := []domain.Transaction{
+		tx("Lidl payment", domain.Expense),
+		tx("Aldi purchase", domain.Expense),
+		tx("Mystery shop", domain.Expense),
+	}
+	rulesList := []domain.Rule{
+		{Patterns: []string{"lidl", "aldi"}, Category: "Groceries"},
+	}
+	applied := rules.Apply(txs, rulesList)
+	got := rules.Uncategorised(applied, rulesList)
+	if len(got) != 1 || got[0].Description != "Mystery shop" {
+		t.Errorf("got %v, want [Mystery shop]", got)
+	}
+}

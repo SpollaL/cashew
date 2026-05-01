@@ -1,9 +1,10 @@
 package rules
 
 import (
-	"github.com/SpollaL/cashew/internal/domain"
 	"regexp"
 	"strings"
+
+	"github.com/SpollaL/cashew/internal/domain"
 )
 
 var spaceRe = regexp.MustCompile(`\s+`)
@@ -12,27 +13,71 @@ func normalizeDescription(s string) string {
 	return spaceRe.ReplaceAllString(strings.ToLower(strings.TrimSpace(s)), " ")
 }
 
+// compiledRule wraps a domain.Rule with precompiled regexps for performance.
+// Invalid regex patterns are silently skipped — ValidateRules catches them at load time.
+type compiledRule struct {
+	domain.Rule
+	regexps []*regexp.Regexp
+}
+
+func compileRules(rules []domain.Rule) []compiledRule {
+	out := make([]compiledRule, len(rules))
+	for i, r := range rules {
+		cr := compiledRule{Rule: r}
+		if r.Regex {
+			for _, p := range r.AllPatterns() {
+				if re, err := regexp.Compile(p); err == nil {
+					cr.regexps = append(cr.regexps, re)
+				}
+			}
+		}
+		out[i] = cr
+	}
+	return out
+}
+
+// matches reports whether the compiled rule matches the normalized description.
+func (cr compiledRule) matches(norm string) bool {
+	if cr.Regex {
+		for _, re := range cr.regexps {
+			if re.MatchString(norm) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, p := range cr.Rule.AllPatterns() {
+		if strings.Contains(norm, strings.ToLower(p)) {
+			return true
+		}
+	}
+	return false
+}
+
 // Apply runs all rules against each transaction in a single pass.
 // A rule can set Type, Category, or both. First match per field wins.
+// Descriptions are normalized before matching (lowercase, collapsed whitespace).
 func Apply(txs []domain.Transaction, rules []domain.Rule) []domain.Transaction {
+	compiled := compileRules(rules)
 	result := make([]domain.Transaction, len(txs))
 	copy(result, txs)
 
 	for i := range result {
 		tx := &result[i]
+		norm := normalizeDescription(tx.Description)
 		typeSet := false
 		categorySet := false
 
-		for _, r := range rules {
-			if !containsFold(tx.Description, r.Pattern) {
+		for _, cr := range compiled {
+			if !cr.matches(norm) {
 				continue
 			}
-			if !typeSet && r.Type != "" {
-				tx.Type = r.Type
+			if !typeSet && cr.Type != "" {
+				tx.Type = cr.Type
 				typeSet = true
 			}
-			if !categorySet && r.Category != "" && tx.Type == domain.Expense {
-				tx.Category = r.Category
+			if !categorySet && cr.Category != "" && tx.Type == domain.Expense {
+				tx.Category = cr.Category
 				categorySet = true
 			}
 			if typeSet && categorySet {
@@ -48,14 +93,14 @@ func Apply(txs []domain.Transaction, rules []domain.Rule) []domain.Transaction {
 
 // Uncategorised returns one representative transaction per unique description
 // for expense transactions that have no category and are not already
-// acknowledged by any rule. This lets the user "skip" a description in the
-// review queue by saving a pattern-only rule for it.
+// acknowledged by any rule.
 func Uncategorised(txs []domain.Transaction, rulesList []domain.Rule) []domain.Transaction {
+	compiled := compileRules(rulesList)
 	seen := map[string]bool{}
 	var out []domain.Transaction
 	for _, tx := range txs {
 		if tx.Type == domain.Expense && tx.Category == "" && !seen[tx.Description] {
-			if !matchedByAnyRule(tx.Description, rulesList) {
+			if !matchedByAnyCompiled(normalizeDescription(tx.Description), compiled) {
 				seen[tx.Description] = true
 				out = append(out, tx)
 			}
@@ -67,11 +112,12 @@ func Uncategorised(txs []domain.Transaction, rulesList []domain.Rule) []domain.T
 // UnreviewedTransfers returns one representative transaction per unique description
 // for transfer transactions not yet acknowledged by any rule.
 func UnreviewedTransfers(txs []domain.Transaction, rulesList []domain.Rule) []domain.Transaction {
+	compiled := compileRules(rulesList)
 	seen := map[string]bool{}
 	var out []domain.Transaction
 	for _, tx := range txs {
 		if tx.Type == domain.Transfer && !seen[tx.Description] {
-			if !matchedByAnyRule(tx.Description, rulesList) {
+			if !matchedByAnyCompiled(normalizeDescription(tx.Description), compiled) {
 				seen[tx.Description] = true
 				out = append(out, tx)
 			}
@@ -80,15 +126,11 @@ func UnreviewedTransfers(txs []domain.Transaction, rulesList []domain.Rule) []do
 	return out
 }
 
-func matchedByAnyRule(description string, rulesList []domain.Rule) bool {
-	for _, r := range rulesList {
-		if containsFold(description, r.Pattern) {
+func matchedByAnyCompiled(norm string, compiled []compiledRule) bool {
+	for _, cr := range compiled {
+		if cr.matches(norm) {
 			return true
 		}
 	}
 	return false
-}
-
-func containsFold(s, substr string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
