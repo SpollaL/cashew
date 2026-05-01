@@ -2,8 +2,15 @@ package rules
 
 import (
 	"github.com/SpollaL/cashew/internal/domain"
+	"regexp"
 	"strings"
 )
+
+var spaceRe = regexp.MustCompile(`\s+`)
+
+func normalizeDescription(s string) string {
+	return spaceRe.ReplaceAllString(strings.ToLower(strings.TrimSpace(s)), " ")
+}
 
 // Apply runs all rules against each transaction in a single pass.
 // A rule can set Type, Category, or both. First match per field wins.
