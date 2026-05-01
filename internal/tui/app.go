@@ -322,7 +322,13 @@ func (a App) saveCategoryRuleSync(pattern, category string) error {
 
 func (a App) bulkSaveCategoryRules(categoryRules []llm.CategoryRule) (int, error) {
 	for i, cr := range categoryRules {
-		r := domain.Rule{Pattern: cr.Pattern, Category: cr.Category, Type: domain.Expense}
+		r := domain.Rule{
+			Pattern:  cr.Pattern,
+			Patterns: cr.Patterns,
+			Regex:    cr.Regex,
+			Category: cr.Category,
+			Type:     domain.Expense,
+		}
 		if err := rules.SaveRule(a.rulesPath, r); err != nil {
 			return i, err
 		}

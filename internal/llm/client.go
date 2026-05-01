@@ -55,7 +55,11 @@ When the user asks to categorize transactions, follow this exact sequence:
 1. Call get_categories to see available categories.
 2. Call get_uncategorized_transactions (offset=0) to get the first batch of up to 20 transactions.
 3. Call bulk_save_category_rules with rules for every transaction in that batch.
-   Use a distinctive keyword from each description as the pattern.
+   Choose the right pattern strategy per transaction:
+   - pattern="keyword": simple substring for obvious merchants (e.g., pattern="mercadona", category="Groceries")
+   - patterns=["kw1","kw2"]: group merchants sharing a category (e.g., patterns=["lidl","aldi"], category="Groceries")
+   - pattern="^keyword", regex=true: use when descriptions have variable text after the merchant name and you want to avoid false matches (e.g., pattern="^bizum recibido", regex=true for income)
+   Default to simple patterns. Only use regex when a plain keyword would match unrelated descriptions.
 4. If the result says more batches remain, call get_uncategorized_transactions again with the next offset, then bulk_save_category_rules for that batch. Repeat until the result says "last batch".
 5. Reply with a short summary of the total number of transactions categorized.
 
@@ -255,7 +259,7 @@ func (c *Client) execute(call api.ToolCall) string {
 			canonical[strings.ToLower(c)] = c
 		}
 
-		var rules []CategoryRule
+		var categoryRules []CategoryRule
 		var invalid []string
 		for _, item := range items {
 			m, ok := item.(map[string]any)
@@ -264,7 +268,16 @@ func (c *Client) execute(call api.ToolCall) string {
 			}
 			p, _ := m["pattern"].(string)
 			cat, _ := m["category"].(string)
-			if p == "" || cat == "" {
+			regex, _ := m["regex"].(bool)
+			var patterns []string
+			if pats, ok := m["patterns"].([]any); ok {
+				for _, pat := range pats {
+					if s, ok := pat.(string); ok {
+						patterns = append(patterns, s)
+					}
+				}
+			}
+			if (p == "" && len(patterns) == 0) || cat == "" {
 				continue
 			}
 			norm, ok := canonical[strings.ToLower(cat)]
@@ -272,9 +285,14 @@ func (c *Client) execute(call api.ToolCall) string {
 				invalid = append(invalid, cat)
 				continue
 			}
-			rules = append(rules, CategoryRule{Pattern: p, Category: norm})
+			categoryRules = append(categoryRules, CategoryRule{
+				Pattern:  p,
+				Patterns: patterns,
+				Regex:    regex,
+				Category: norm,
+			})
 		}
-		saved, err := c.tools.BulkSaveCategoryRules(rules)
+		saved, err := c.tools.BulkSaveCategoryRules(categoryRules)
 		if err != nil {
 			return fmt.Sprintf("Saved %d rules, then hit an error: %v", saved, err)
 		}

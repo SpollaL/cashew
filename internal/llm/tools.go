@@ -28,6 +28,8 @@ type Tools struct {
 // CategoryRule is a single pattern → category mapping used by BulkSaveCategoryRules.
 type CategoryRule struct {
 	Pattern  string
+	Patterns []string
+	Regex    bool
 	Category string
 }
 
@@ -73,7 +75,15 @@ func (t Tools) schemas() api.Tools {
 	bulkRuleItemProps := api.NewToolPropertiesMap()
 	bulkRuleItemProps.Set("pattern", api.ToolProperty{
 		Type:        api.PropertyType{"string"},
-		Description: "Keyword to match in transaction description",
+		Description: "Single keyword to match in the transaction description (case-insensitive substring).",
+	})
+	bulkRuleItemProps.Set("patterns", api.ToolProperty{
+		Type:        api.PropertyType{"array"},
+		Description: "Alternative to 'pattern': list of keywords matched with OR logic. Use to group similar merchants under one rule.",
+	})
+	bulkRuleItemProps.Set("regex", api.ToolProperty{
+		Type:        api.PropertyType{"boolean"},
+		Description: "If true, treat pattern/patterns as Go regexp matched against the lowercase description. Use ^ to anchor to the start.",
 	})
 	bulkRuleItemProps.Set("category", api.ToolProperty{
 		Type:        api.PropertyType{"string"},
@@ -82,7 +92,7 @@ func (t Tools) schemas() api.Tools {
 	bulkSaveProps := api.NewToolPropertiesMap()
 	bulkSaveProps.Set("rules", api.ToolProperty{
 		Type:        api.PropertyType{"array"},
-		Description: "List of {pattern, category} objects to save as categorization rules",
+		Description: "List of rule objects to save. Each rule has: pattern (string), patterns (array, optional), regex (bool, optional), category (string).",
 	})
 
 	return api.Tools{
