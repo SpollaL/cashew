@@ -1,5 +1,6 @@
 /cashew
 /cashew-server
+.worktrees/
 *.csv
 *.xlsx
 rules.toml
