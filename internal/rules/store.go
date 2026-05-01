@@ -1,12 +1,13 @@
 package rules
 
 import (
-	"github.com/SpollaL/cashew/internal/domain"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/SpollaL/cashew/internal/domain"
 )
 
 type config struct {
@@ -18,6 +19,7 @@ type config struct {
 
 type tomlRule struct {
 	Pattern  string `toml:"pattern"`
+	Regex    bool   `toml:"regex,omitempty"`
 	Type     string `toml:"type,omitempty"`
 	Category string `toml:"category,omitempty"`
 }
@@ -48,16 +50,21 @@ func Load(path string) ([]domain.Rule, []string, error) {
 		buckets = defaultBuckets
 	}
 
-	rules := make([]domain.Rule, len(cfg.Rules))
+	rulesList := make([]domain.Rule, len(cfg.Rules))
 	for i, r := range cfg.Rules {
-		rules[i] = domain.Rule{
+		rulesList[i] = domain.Rule{
 			Pattern:  r.Pattern,
+			Regex:    r.Regex,
 			Type:     domain.TransactionType(r.Type),
 			Category: r.Category,
 		}
 	}
 
-	return rules, buckets, nil
+	if err := ValidateRules(rulesList); err != nil {
+		return nil, nil, fmt.Errorf("load rules %s: %w", path, err)
+	}
+
+	return rulesList, buckets, nil
 }
 
 // SaveRule saves a rule, updating an existing entry for the same pattern if one exists.
@@ -109,4 +116,19 @@ func write(path string, rulesList []domain.Rule, buckets []string) error {
 	}
 
 	return os.WriteFile(path, []byte(sb.String()), 0644)
+}
+
+// ValidateRules returns an error if any rule with Regex=true contains an invalid pattern.
+func ValidateRules(rulesList []domain.Rule) error {
+	for i, r := range rulesList {
+		if !r.Regex {
+			continue
+		}
+		for _, p := range r.AllPatterns() {
+			if _, err := regexp.Compile(p); err != nil {
+				return fmt.Errorf("rule %d: invalid regex %q: %w", i, p, err)
+			}
+		}
+	}
+	return nil
 }
