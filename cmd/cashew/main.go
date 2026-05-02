@@ -1,21 +1,45 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
+	"os/exec"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/SpollaL/cashew/internal/config"
 	"github.com/SpollaL/cashew/internal/domain"
 	"github.com/SpollaL/cashew/internal/ledger"
 	"github.com/SpollaL/cashew/internal/parser"
 	"github.com/SpollaL/cashew/internal/rules"
 	"github.com/SpollaL/cashew/internal/tui"
-	"flag"
-	"fmt"
-	"os"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "rules" {
+		path, err := config.RulesPath()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = "vi"
+		}
+		cmd := exec.Command(editor, path)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	model := flag.String("model", "hf.co/Qwen/Qwen3-4B-GGUF:Q4_K_M", "Ollama model to use for chat (e.g. gemma3, llama3.2)")
 	debug := flag.Bool("debug", false, "show LLM roundtrip details in the chat view")
 	ver := flag.Bool("version", false, "print version and exit")
@@ -31,11 +55,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	rulesPath, err := config.RulesPath()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error resolving rules path:", err)
+		os.Exit(1)
+	}
+
 	parsers := []parser.Parser{
 		parser.Revolut{},
 		parser.BBVA{},
 	}
-	rulesPath := "rules.toml"
 
 	var allTxs []domain.Transaction
 	for _, path := range flag.Args() {
