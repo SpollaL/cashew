@@ -77,7 +77,7 @@ On first run, cashew opens the **review queue** — a list of every transaction 
 
 1. Select a transaction and press `enter` to assign a category (marks it as an expense).
 2. Press `i` if it is income, `T` if it is an internal transfer, `I` if it is an investment.
-3. Each action saves a rule to `rules.toml` so future transactions with the same description are categorised automatically.
+3. Each action saves a rule to `~/.cashew/rules.toml` so future transactions with the same description are categorised automatically.
 4. Press `n` to skip a transaction without saving a rule.
 
 Once the queue is empty, switch to the **summary** (`s`) or **categories** (`c`) views to explore your finances.
@@ -178,13 +178,25 @@ The model has access to four tools it can call autonomously:
 | `get_categories` | List all known spending categories |
 | `save_category_rule` | Persist a new pattern → category rule to `rules.toml` |
 
-> **Note:** `save_category_rule` writes directly to `rules.toml` but the in-memory view is not refreshed until you restart the app or navigate through the review queue. The rules will be applied correctly on the next launch.
+> **Note:** `save_category_rule` writes directly to `~/.cashew/rules.toml` but the in-memory view is not refreshed until you restart the app or navigate through the review queue. The rules will be applied correctly on the next launch.
 
 > **Model compatibility:** multi-step tool calling works best with models that support function calling well — `Qwen3`, `gemma3`, `llama3.1`, and `qwen2.5` are good choices. Smaller models may summarise instead of invoking tools; try a larger variant if that happens.
 
 ## Rules
 
-If `rules.toml` doesn't exist, cashew creates one with a default set of category buckets and no rules — ready for you to populate via the review workflow. Rules match transaction descriptions by substring (case-insensitive) and can set a type, a category, or both.
+Rules live at `~/.cashew/rules.toml`. On first run cashew creates the file with a default set of category buckets and no rules — ready for you to populate via the review workflow.
+
+To open the file in your `$EDITOR`:
+```bash
+cashew rules
+```
+
+Override the path with an environment variable:
+```bash
+CASHEW_RULES=/path/to/rules.toml cashew data/*.csv
+```
+
+Rules match transaction descriptions by substring (case-insensitive) and can set a type, a category, or both.
 
 ```toml
 [categories]
@@ -203,7 +215,7 @@ pattern = "Nómina"
 type = "income"
 ```
 
-Rules saved from the TUI are prepended so they take precedence over handwritten substring rules. `rules.toml` is gitignored — use `rules.example.toml` as a template.
+Rules saved from the TUI are prepended so they take precedence over handwritten substring rules. See `rules.example.toml` for a full example.
 
 ## Architecture
 
