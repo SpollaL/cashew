@@ -1,21 +1,29 @@
 package main
 
 import (
-	"github.com/SpollaL/cashew/internal/domain"
-	"github.com/SpollaL/cashew/internal/parser"
-	"github.com/SpollaL/cashew/internal/rules"
-	"github.com/SpollaL/cashew/internal/server"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/SpollaL/cashew/internal/config"
+	"github.com/SpollaL/cashew/internal/domain"
+	"github.com/SpollaL/cashew/internal/parser"
+	"github.com/SpollaL/cashew/internal/rules"
+	"github.com/SpollaL/cashew/internal/server"
 )
 
 var version = "dev"
 
 func main() {
+	defaultRules, err := config.RulesPath()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error resolving rules path:", err)
+		os.Exit(1)
+	}
+
 	addr := flag.String("addr", ":8080", "listen address")
-	rulesPath := flag.String("rules", "rules.toml", "path to rules.toml")
+	rulesPath := flag.String("rules", defaultRules, "path to rules.toml")
 	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
