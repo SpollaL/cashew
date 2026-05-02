@@ -92,11 +92,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	rawTxs := allTxs
 	allTxs = rules.Apply(allTxs, rulesList)
 	l := ledger.New(allTxs)
 
-	app := tui.New(l, rulesList, buckets, rulesPath, *model, *debug)
+	app := tui.New(l, rawTxs, rulesList, buckets, rulesPath, *model, *debug)
 	p := tea.NewProgram(app, tea.WithAltScreen())
+	app.SetProgram(p)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

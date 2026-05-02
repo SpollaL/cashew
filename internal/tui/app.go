@@ -1,16 +1,29 @@
 package tui
 
 import (
+	"fmt"
+	"sync"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/SpollaL/cashew/internal/domain"
 	"github.com/SpollaL/cashew/internal/ledger"
 	"github.com/SpollaL/cashew/internal/llm"
 	"github.com/SpollaL/cashew/internal/rules"
 	"github.com/SpollaL/cashew/internal/tui/views"
-	"fmt"
-	"time"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
+
+// sharedState is heap-allocated and shared across all App copies (value receiver
+// methods capture App by value, but the pointer stays live). LLM goroutine and
+// TUI goroutine both touch it; mu protects rulesList and buckets.
+type sharedState struct {
+	mu        sync.RWMutex
+	rawTxs    []domain.Transaction // pre-Apply snapshot; immutable after init
+	rulesList []domain.Rule
+	buckets   []string
+	rulesPath string // immutable after init
+	prog      *tea.Program
+}
 
 type viewKey int
 
@@ -28,6 +41,7 @@ type App struct {
 	rulesPath   string
 	buckets     []string
 	granularity domain.Granularity
+	state       *sharedState
 
 	active       viewKey
 	prevView     viewKey
@@ -41,7 +55,7 @@ type App struct {
 	height int
 }
 
-func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, model string, debug bool) App {
+func New(l ledger.Ledger, rawTxs []domain.Transaction, rulesList []domain.Rule, buckets []string, rulesPath, model string, debug bool) App {
 	txs := l.All()
 	uncategorised := rules.Uncategorised(txs, rulesList)
 	unreviewed := rules.UnreviewedTransfers(txs, rulesList)
@@ -54,6 +68,13 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, 
 		active = viewReview
 	}
 
+	state := &sharedState{
+		rawTxs:    rawTxs,
+		rulesList: rulesList,
+		buckets:   buckets,
+		rulesPath: rulesPath,
+	}
+
 	app := App{
 		fullLedger:   l,
 		rulesList:    rulesList,
@@ -61,6 +82,7 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, 
 		buckets:      buckets,
 		granularity:  g,
 		active:       active,
+		state:        state,
 		summary:      views.NewSummary(summaries, g),
 		categories:   views.NewCategories(summaries, g),
 		transactions: views.NewTransactions(txs, buckets),
@@ -78,6 +100,12 @@ func New(l ledger.Ledger, rulesList []domain.Rule, buckets []string, rulesPath, 
 	app.chat = views.NewChat(llmClient, debug)
 
 	return app
+}
+
+// SetProgram wires up the tea.Program so LLM saves can push refreshMsg into
+// the TUI event loop. Call this after tea.NewProgram, before p.Run().
+func (a App) SetProgram(p *tea.Program) {
+	a.state.prog = p
 }
 
 func (a App) Init() tea.Cmd { return nil }
@@ -223,8 +251,14 @@ type refreshMsg struct {
 const uncategorizedBatchSize = 20
 
 func (a App) getUncategorizedTransactions(offset int) []string {
+	a.state.mu.RLock()
+	rawTxs := a.state.rawTxs
+	rulesList := a.state.rulesList
+	a.state.mu.RUnlock()
+
+	applied := rules.Apply(rawTxs, rulesList)
 	var all []string
-	for _, tx := range a.fullLedger.All() {
+	for _, tx := range applied {
 		if tx.Category == "" {
 			all = append(all, fmt.Sprintf("%s | %8.2f %s | %s",
 				tx.Date.Format("2006-01-02"),
@@ -253,7 +287,12 @@ func (a App) getUncategorizedTransactions(offset int) []string {
 }
 
 func (a App) getTransactions(filters llm.TransactionFilters) []string {
-	l := a.fullLedger
+	a.state.mu.RLock()
+	rawTxs := a.state.rawTxs
+	rulesList := a.state.rulesList
+	a.state.mu.RUnlock()
+
+	l := ledger.New(rules.Apply(rawTxs, rulesList))
 	if filters.Type != "" {
 		switch filters.Type {
 		case "expense":
@@ -294,7 +333,12 @@ func (a App) getTransactions(filters llm.TransactionFilters) []string {
 }
 
 func (a App) getMonthlySummary(months []string) []string {
-	summaries := a.fullLedger.Aggregate(domain.Monthly)
+	a.state.mu.RLock()
+	rawTxs := a.state.rawTxs
+	rulesList := a.state.rulesList
+	a.state.mu.RUnlock()
+
+	summaries := ledger.New(rules.Apply(rawTxs, rulesList)).Aggregate(domain.Monthly)
 	want := make(map[string]bool, len(months))
 	for _, m := range months {
 		want[m] = true
@@ -312,12 +356,17 @@ func (a App) getMonthlySummary(months []string) []string {
 }
 
 func (a App) getCategories() []string {
-	return a.buckets
+	a.state.mu.RLock()
+	defer a.state.mu.RUnlock()
+	return a.state.buckets
 }
 
 func (a App) saveCategoryRuleSync(pattern, category string) error {
 	r := domain.Rule{Pattern: pattern, Category: category, Type: domain.Expense}
-	return rules.SaveRule(a.rulesPath, r)
+	if err := rules.SaveRule(a.state.rulesPath, r); err != nil {
+		return err
+	}
+	return a.reloadAndRefresh()
 }
 
 func (a App) bulkSaveCategoryRules(categoryRules []llm.CategoryRule) (int, error) {
@@ -329,16 +378,36 @@ func (a App) bulkSaveCategoryRules(categoryRules []llm.CategoryRule) (int, error
 			Category: cr.Category,
 			Type:     domain.Expense,
 		}
-		if err := rules.SaveRule(a.rulesPath, r); err != nil {
+		if err := rules.SaveRule(a.state.rulesPath, r); err != nil {
 			return i, err
 		}
 	}
-	return len(categoryRules), nil
+	return len(categoryRules), a.reloadAndRefresh()
+}
+
+func (a App) reloadAndRefresh() error {
+	rulesList, buckets, err := rules.Load(a.state.rulesPath)
+	if err != nil {
+		return err
+	}
+	a.state.mu.Lock()
+	a.state.rulesList = rulesList
+	a.state.buckets = buckets
+	a.state.mu.Unlock()
+	if a.state.prog != nil {
+		a.state.prog.Send(refreshMsg{rulesList: rulesList, buckets: buckets})
+	}
+	return nil
 }
 
 // ── Refresh ───────────────────────────────────────────────────────────────────
 
 func (a App) applyRefresh(msg refreshMsg) App {
+	a.state.mu.Lock()
+	a.state.rulesList = msg.rulesList
+	a.state.buckets = msg.buckets
+	a.state.mu.Unlock()
+
 	txs := rules.Apply(a.fullLedger.All(), msg.rulesList)
 	a.fullLedger = ledger.New(txs)
 	a.rulesList = msg.rulesList
