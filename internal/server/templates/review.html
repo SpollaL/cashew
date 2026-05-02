@@ -24,7 +24,14 @@
       <tr>
         <td>{{.Description}}</td>
         <form method="POST" action="/review">
-          <input type="hidden" name="pattern" value="{{.Description}}">
+          <td>
+            <input type="text" name="pattern" value="{{.Description}}" style="min-width:16rem;">
+            <small style="display:block; color:var(--pico-muted-color);">Tip: <code>^word</code> matches descriptions that start with "word"</small>
+            <label style="margin-top:0.25rem; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem;">
+              <input type="checkbox" name="regex" role="switch">
+              regex
+            </label>
+          </td>
           <td>
             <select name="category">
               <option value="">— pick category —</option>

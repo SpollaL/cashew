@@ -55,6 +55,7 @@ func (s *Server) handleReviewPost(w http.ResponseWriter, r *http.Request) {
 		Pattern:  pattern,
 		Category: r.FormValue("category"),
 		Type:     domain.TransactionType(r.FormValue("type")),
+		Regex:    r.FormValue("regex") == "on",
 	}
 
 	s.mu.Lock()
