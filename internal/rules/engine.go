@@ -46,7 +46,7 @@ func (cr compiledRule) matches(norm string) bool {
 		}
 		return false
 	}
-	for _, p := range cr.Rule.AllPatterns() {
+	for _, p := range cr.AllPatterns() {
 		if strings.Contains(norm, strings.ToLower(p)) {
 			return true
 		}
