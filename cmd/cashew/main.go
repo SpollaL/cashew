@@ -25,6 +25,14 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		// Bootstrap the file with default buckets if it doesn't exist yet,
+		// so editors that can't create files don't fail on first run.
+		if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+			if _, _, loadErr := rules.Load(path); loadErr != nil {
+				fmt.Fprintln(os.Stderr, loadErr)
+				os.Exit(1)
+			}
+		}
 		editor := os.Getenv("EDITOR")
 		if editor == "" {
 			editor = "vi"

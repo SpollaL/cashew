@@ -16,20 +16,23 @@ import (
 var version = "dev"
 
 func main() {
-	defaultRules, err := config.RulesPath()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error resolving rules path:", err)
-		os.Exit(1)
-	}
-
 	addr := flag.String("addr", ":8080", "listen address")
-	rulesPath := flag.String("rules", defaultRules, "path to rules.toml")
+	rulesPath := flag.String("rules", "", "path to rules.toml (default ~/.cashew/rules.toml)")
 	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
 	if *ver {
 		fmt.Println(version)
 		return
+	}
+
+	if *rulesPath == "" {
+		defaultRules, err := config.RulesPath()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error resolving rules path:", err)
+			os.Exit(1)
+		}
+		*rulesPath = defaultRules
 	}
 
 	files := flag.Args()
