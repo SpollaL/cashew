@@ -36,8 +36,11 @@ func TestRulesPath_HomeDir(t *testing.T) {
 	}
 
 	dir := filepath.Dir(got)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
+	info, err := os.Stat(dir)
+	if os.IsNotExist(err) {
 		t.Errorf("expected dir %q to exist", dir)
+	} else if info.Mode().Perm() != 0700 {
+		t.Errorf("dir permissions = %o, want 0700", info.Mode().Perm())
 	}
 }
 
