@@ -3,7 +3,6 @@ package config_test
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/SpollaL/cashew/internal/config"
@@ -42,16 +41,20 @@ func TestRulesPath_HomeDir(t *testing.T) {
 	}
 }
 
-func TestRulesPath_HomeDir_EndsCorrectly(t *testing.T) {
+func TestRulesPath_HomeDir_MkdirAllFails(t *testing.T) {
 	t.Setenv("CASHEW_RULES", "")
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	got, err := config.RulesPath()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	// Place a regular file where the dir should be, so MkdirAll fails.
+	blocker := filepath.Join(tmp, ".cashew")
+	if err := os.WriteFile(blocker, []byte("block"), 0644); err != nil {
+		t.Fatalf("setup: %v", err)
 	}
-	if !strings.HasSuffix(got, filepath.Join(".cashew", "rules.toml")) {
-		t.Errorf("path %q does not end with .cashew/rules.toml", got)
+
+	_, err := config.RulesPath()
+	if err == nil {
+		t.Fatal("expected error when MkdirAll fails, got nil")
 	}
 }
+

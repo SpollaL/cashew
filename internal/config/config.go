@@ -8,7 +8,10 @@ import (
 
 // RulesPath returns the resolved path to rules.toml.
 // Priority: $CASHEW_RULES env var → ~/.cashew/rules.toml
-// When falling back to the home dir, the parent directory is created if missing.
+//
+// When $CASHEW_RULES is set the path is returned as-is; the caller is
+// responsible for ensuring the parent directory exists.
+// When falling back to the home dir, ~/.cashew/ is created if missing.
 func RulesPath() (string, error) {
 	if p := os.Getenv("CASHEW_RULES"); p != "" {
 		return p, nil
@@ -20,7 +23,7 @@ func RulesPath() (string, error) {
 	}
 
 	dir := filepath.Join(home, ".cashew")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", fmt.Errorf("create config dir %s: %w", dir, err)
 	}
 
